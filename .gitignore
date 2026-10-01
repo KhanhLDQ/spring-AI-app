@@ -1,0 +1,20 @@
+target/
+build/
+.gradle/
+.idea/
+*.iml
+.vscode/
+.DS_Store
+.env
+application-local.*
+
+# Not implementation: planning, mockups, reference material, local tooling
+docs/
+.claude/
+HELP.md
+.env.*
+!.env.example
+
+# Frontend
+node_modules/
+frontend/dist/
