@@ -48,3 +48,4 @@ details.how .code { margin-top: .4rem; }
   .ins { border-left: 0; border-top: 1px solid var(--ins-line); }
 }
 
+.sb, .ret { overflow-wrap: anywhere; }

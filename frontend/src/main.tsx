@@ -7,6 +7,7 @@ import "./styles/login.css";
 import "./styles/shell.css";
 import "./styles/chat.css";
 import "./styles/inspector.css";
+import "./styles/cards.css";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>

@@ -1,11 +1,19 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
+import { fetchMyOrders } from "../api/orders";
 import { useAuth } from "../auth/AuthContext";
+import { OrderCard } from "../chat/OrderCard";
+import { ToolChips } from "../chat/ToolChips";
+import { toolCalls } from "../chat/toolSteps";
+import { TurnMeta } from "../chat/TurnMeta";
 import { useChat } from "../chat/useChat";
 import { Inspector } from "../inspector/Inspector";
+import { useOrders } from "../orders/useOrders";
 
-export function ChatPage() {
+export function ChatPage({ onOpenOrders }: { onOpenOrders: () => void }) {
   const { session, logout } = useAuth();
   const { turns, send, busy, ready, newChat } = useChat(session!.token, logout);
+  const loadMine = useCallback(() => fetchMyOrders(session!.token), [session]);
+  const { orders } = useOrders(loadMine, logout);
   const [draft, setDraft] = useState("");
   const end = useRef<HTMLDivElement>(null);
   const [selected, setSelected] = useState(0);
@@ -82,12 +90,18 @@ export function ChatPage() {
                 <div className="b">
                   <div className="b-av" aria-hidden="true">K</div>
                   <div className="b-main">
+                    <ToolChips calls={toolCalls(turn.steps)} />
                     {turn.answer && <div className="b-text">{turn.answer}</div>}
                     {turn.status === "streaming" && !turn.answer && (
                       <span className="dots" aria-label="Thinking">
                         <i /><i /><i />
                       </span>
                     )}
+                    {toolCalls(turn.steps).map((call, i) => {
+                      const order = orders?.find((o) => o.id === call.orderId);
+                      return order && <OrderCard key={i} order={order} onOpenOrders={onOpenOrders} />;
+                    })}
+                    {turn.stats && <TurnMeta stats={turn.stats} />}
                     {turn.status === "error" && (
                       <div className="b-error" role="alert">
                         {turn.error}

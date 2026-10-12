@@ -15,7 +15,7 @@ function Workspace() {
     <AppShell view={view} onNavigate={setView}>
       {/* Chat stays mounted so the conversation survives a trip to another page. */}
       <div className="view" hidden={view !== "chat"}>
-        <ChatPage />
+        <ChatPage onOpenOrders={() => setView("orders")} />
       </div>
       {view === "orders" && <MyOrdersPage />}
       {view === "admin-orders" && isAdmin && <AdminOrdersPage />}
