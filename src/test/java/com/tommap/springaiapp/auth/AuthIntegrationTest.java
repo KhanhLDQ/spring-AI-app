@@ -86,7 +86,7 @@ class AuthIntegrationTest {
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON));
 
         mvc.perform(get("/api/admin/orders").header("Authorization", "Bearer " + login("admin")))
-                .andExpect(status().isNotFound());
+                .andExpect(status().isOk());
     }
 
     @Test
