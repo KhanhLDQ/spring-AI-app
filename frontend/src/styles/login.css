@@ -1,0 +1,18 @@
+.login { min-height: 100vh; display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); }
+.login-art { background: var(--accent); color: var(--accent-ink); padding: 3rem; display: flex; flex-direction: column; justify-content: space-between; gap: 2rem; }
+.login-art h1 { font-size: 2.6rem; max-width: 14ch; line-height: 1.05; }
+.login-art p { max-width: 42ch; opacity: .88; margin: .8rem 0 0; }
+.login-form { display: flex; flex-direction: column; justify-content: center; gap: .9rem; padding: 3rem; max-width: 29rem; width: 100%; margin: 0 auto; }
+.login-form h2 { text-transform: none; letter-spacing: 0; font: 700 1.3rem var(--font-display); color: var(--ink); }
+.role-btn { display: flex; align-items: center; gap: .9rem; text-align: left; padding: 1rem; border: 1px solid var(--line); background: var(--surface); border-radius: .65rem; }
+.role-btn:hover { border-color: var(--accent); }
+.role-btn b { display: block; font-size: 1rem; }
+.role-btn span { color: var(--muted); font-size: .85rem; }
+.role-btn:disabled { opacity: .6; cursor: default; }
+.form-error { margin: 0; color: var(--bad); font-size: .9rem; }
+.placeholder { padding: 2rem; display: flex; align-items: center; gap: 1rem; }
+@media (max-width: 760px) {
+  .login { grid-template-columns: minmax(0, 1fr); }
+  .login-art, .login-form { padding: 1.7rem 1rem; }
+  .login-art h1 { font-size: 1.9rem; }
+}

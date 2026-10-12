@@ -1,0 +1,58 @@
+:root {
+  --bg: #F4F5F9;
+  --surface: #FFFFFF;
+  --surface2: #ECEEF5;
+  --ink: #171A2B;
+  --muted: #586079;
+  --line: #DEE1EC;
+  --accent: #3B36A0;
+  --accent-ink: #FFFFFF;
+  --accent-soft: #E8E7F8;
+  --ok: #17795A;   --ok-soft: #DCF2E9;
+  --warn: #8E5500; --warn-soft: #FBEACB;
+  --bad: #B3261E;  --bad-soft: #FBE0DD;
+  /* Inspector: always dark, in both themes */
+  --ins-bg: #12142A; --ins-surface: #1A1D38; --ins-line: #2B3052; --ins-ink: #E8EAF6; --ins-muted: #A0A7C4;
+  --k-cache: #4FD1A1; --k-memory: #AEB6DA; --k-rag: #5CC8DB; --k-model: #F2B84B; --k-tool: #AAA5FF; --k-err: #FF8F85;
+  --font-display: "Bricolage Grotesque", "Trebuchet MS", system-ui, sans-serif;
+  --font-body: "Public Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0E1020; --surface: #171A2E; --surface2: #20243B; --ink: #E8EAF5; --muted: #9EA5C0; --line: #2A2F4A;
+    --accent: #A5A0F8; --accent-ink: #0E1020; --accent-soft: #28285A;
+    --ok: #4FD1A1; --ok-soft: #113328; --warn: #F2B84B; --warn-soft: #3A2C0F; --bad: #FF8F85; --bad-soft: #451B1B;
+    --ins-bg: #0A0B18; --ins-surface: #14162B; --ins-line: #262A47;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0E1020; --surface: #171A2E; --surface2: #20243B; --ink: #E8EAF5; --muted: #9EA5C0; --line: #2A2F4A;
+  --accent: #A5A0F8; --accent-ink: #0E1020; --accent-soft: #28285A;
+  --ok: #4FD1A1; --ok-soft: #113328; --warn: #F2B84B; --warn-soft: #3A2C0F; --bad: #FF8F85; --bad-soft: #451B1B;
+  --ins-bg: #0A0B18; --ins-surface: #14162B; --ins-line: #262A47;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html { font-size: 15px; height: 100%; }
+body { margin: 0; height: 100%; background: var(--bg); color: var(--ink); font: 400 1rem/1.5 var(--font-body); }
+button, input { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.mono { font-family: var(--font-mono); }
+.num { font-variant-numeric: tabular-nums; }
+.ic { width: 1.05em; height: 1.05em; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+
+/* shared */
+.brand { display: flex; align-items: center; gap: .65rem; padding: 0 .4rem; }
+.brand-mark { width: 2rem; height: 2rem; border-radius: 50% 50% 50% .5rem; background: var(--accent); display: grid; place-items: center; color: var(--accent-ink); font: 700 1.05rem var(--font-display); flex: none; }
+.brand-name { font: 700 1.05rem/1.1 var(--font-display); letter-spacing: -.01em; }
+.avatar { width: 1.9rem; height: 1.9rem; border-radius: 50%; background: var(--accent-soft); color: var(--accent); display: grid; place-items: center; font-weight: 600; font-size: .8rem; flex: none; }
+h1 { margin: 0; font: 700 1.6rem/1.15 var(--font-display); letter-spacing: -.015em; text-wrap: balance; }
+h2 { margin: 0; font: 600 .78rem/1.3 var(--font-body); letter-spacing: .07em; text-transform: uppercase; color: var(--muted); }
+.btn { border: 1px solid var(--line); background: var(--surface); border-radius: .5rem; padding: .45rem .9rem; font-weight: 500; }
+.btn:hover { background: var(--surface2); }
+.btn:disabled { opacity: .5; cursor: default; }
