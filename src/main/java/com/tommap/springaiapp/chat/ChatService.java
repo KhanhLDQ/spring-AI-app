@@ -1,6 +1,9 @@
 package com.tommap.springaiapp.chat;
 
 import com.tommap.springaiapp.auth.AuthenticatedUser;
+import com.tommap.springaiapp.auth.ToolCaller;
+import com.tommap.springaiapp.catalog.CatalogTools;
+import com.tommap.springaiapp.order.OrderTools;
 import com.tommap.springaiapp.trace.TraceCollector;
 import com.tommap.springaiapp.trace.TraceStep;
 import java.math.BigDecimal;
@@ -25,11 +28,16 @@ class ChatService {
     private final ChatClient chatClient;
     private final TraceCollector traces;
     private final PricingProperties pricing;
+    private final CatalogTools catalogTools;
+    private final OrderTools orderTools;
 
-    ChatService(ChatClient chatClient, TraceCollector traces, PricingProperties pricing) {
+    ChatService(ChatClient chatClient, TraceCollector traces, PricingProperties pricing, CatalogTools catalogTools,
+                OrderTools orderTools) {
         this.chatClient = chatClient;
         this.traces = traces;
         this.pricing = pricing;
+        this.catalogTools = catalogTools;
+        this.orderTools = orderTools;
     }
 
     Flux<ChatEvent> stream(AuthenticatedUser user, UUID conversationId, String message) {
@@ -38,13 +46,13 @@ class ChatService {
         long startNanos = System.nanoTime();
 
         // Built here on the request thread: SecurityContextHolder is empty inside reactor threads and tools.
-        Map<String, Object> toolContext = Map.of("userId", user.username(), "role", user.role().name(),
-                "conversationId", user.username() + ":" + conversationId);
+        Map<String, Object> toolContext = ToolCaller.contextFor(user, user.username() + ":" + conversationId);
 
         Flux<ChatEvent> tokens = chatClient.prompt()
                 .system(SystemPrompts.forRole(user.role()))
                 .user(message)
                 .advisors(a -> a.param(TraceCollector.TRACE_ID_PARAM, traceId))
+                .tools(catalogTools, orderTools)
                 .toolContext(toolContext)
                 .stream()
                 .content()
