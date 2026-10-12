@@ -4,6 +4,7 @@ import java.text.Normalizer;
 import java.util.List;
 import java.util.Locale;
 import java.util.stream.Collectors;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,7 +19,7 @@ public class CatalogService {
 
     @Transactional(readOnly = true)
     public List<ProductView> list() {
-        return products.findAll().stream().map(ProductView::of).toList();
+        return products.findAll(Sort.by("id")).stream().map(ProductView::of).toList();
     }
 
     @Transactional(readOnly = true)

@@ -29,6 +29,14 @@ class MockScriptTest {
     }
 
     @Test
+    void priceQuestionBecomesAGetProductToolCall() {
+        var call = reply("how much is honey kefir 500ml").toolCalls().getFirst();
+
+        assertThat(call.name()).isEqualTo("getProduct");
+        assertThat(call.arguments()).isEqualTo("{\"product\":\"MAT-ONG-500\"}");
+    }
+
+    @Test
     void smallTalkNeedsNoTool() {
         assertThat(reply("hello there").hasToolCalls()).isFalse();
         assertThat(reply("xin chào").text()).startsWith("Xin chào");

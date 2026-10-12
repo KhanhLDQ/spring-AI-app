@@ -40,6 +40,7 @@ final class MockScript {
     private static final Pattern CANCEL = Pattern.compile("(?:cancel|huỷ|hủy)\\s+(?:order|đơn)?\\s*#?(\\d+)");
     private static final Pattern CHANGE = Pattern.compile("(?:change|update)\\s+order\\s+#?(\\d+)\\s+to\\s+(\\d+)");
     private static final Pattern ORDER = Pattern.compile("(?:order|đặt)\\s+(\\d+)\\s+(?:chai\\s+)?(.+)");
+    private static final Pattern PRICE = Pattern.compile("(?:price|how much|giá)\\s+(?:of\\s+|is\\s+)?(.+)");
     private static final Pattern GREETING_EN = Pattern.compile("\\b(hello|hi)\\b");
     private static final Map<String, String> SKU_BY_KEYWORD = Map.of(
             "honey", "MAT-ONG-330", "mật ong", "MAT-ONG-330",
@@ -85,6 +86,10 @@ final class MockScript {
                 return Reply.tool("createOrder", "{\"product\":\"" + sku + "\",\"quantity\":" + order.group(1) + "}");
             }
         }
+        Matcher price = PRICE.matcher(q);
+        if (price.find() && skuFor(price.group(1)) != null) {
+            return Reply.tool("getProduct", "{\"product\":\"" + skuFor(price.group(1)) + "\"}");
+        }
         if (q.contains("my orders") || q.contains("đơn của tôi")) {
             return Reply.tool("listMyOrders", "{}");
         }
@@ -118,6 +123,10 @@ final class MockScript {
         }
         if (data.isArray()) {
             return "I found " + data.size() + " item(s). Details are in the Inspector.";
+        }
+        if (data.has("sku")) {
+            return data.path("name").asString() + " costs " + data.path("priceVnd").asLong() + " VND, "
+                    + data.path("stock").asInt() + " in stock.";
         }
         if (data.has("status")) {
             return "Done. Order #" + data.path("id").asLong() + " is " + data.path("status").asString()
