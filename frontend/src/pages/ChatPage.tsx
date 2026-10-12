@@ -63,9 +63,6 @@ export function ChatPage() {
             <button className="btn sm" onClick={() => void newChat()} disabled={busy}>
               New chat
             </button>
-            <button className="btn sm" onClick={logout}>
-              Log out
-            </button>
           </div>
         </header>
 

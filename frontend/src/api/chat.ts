@@ -1,6 +1,7 @@
 import { fetchEventSource } from "@microsoft/fetch-event-source";
+import { request, UnauthorizedError } from "./http";
 
-export class UnauthorizedError extends Error {}
+export { UnauthorizedError };
 
 export type StepKind = "cache" | "cachewrite" | "memory" | "rag" | "model" | "tool";
 
@@ -34,14 +35,7 @@ const jsonHeaders = (token: string) => ({
 });
 
 export async function newConversation(token: string): Promise<string> {
-  const response = await fetch("/api/chat/new", { method: "POST", headers: jsonHeaders(token) });
-  if (response.status === 401) {
-    throw new UnauthorizedError();
-  }
-  if (!response.ok) {
-    throw new Error(`Could not start a conversation (${response.status})`);
-  }
-  const { conversationId } = await response.json();
+  const { conversationId } = await request<{ conversationId: string }>(token, "/api/chat/new", { method: "POST" });
   return conversationId;
 }
 

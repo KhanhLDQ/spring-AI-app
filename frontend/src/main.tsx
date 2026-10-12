@@ -4,6 +4,7 @@ import { App } from "./App";
 import { AuthProvider } from "./auth/AuthContext";
 import "./styles/tokens.css";
 import "./styles/login.css";
+import "./styles/shell.css";
 import "./styles/chat.css";
 import "./styles/inspector.css";
 
