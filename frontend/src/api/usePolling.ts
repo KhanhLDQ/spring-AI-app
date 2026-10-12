@@ -1,23 +1,25 @@
 import { useCallback, useEffect, useState } from "react";
-import { UnauthorizedError } from "../api/http";
-import type { Order } from "../api/orders";
+import { UnauthorizedError } from "./http";
 
 const POLL_MS = 2000;
 
-/** Keeps a list of orders fresh, so an order the bot just created shows up without a page reload. */
-export function useOrders(load: () => Promise<Order[]>, onUnauthorized: () => void) {
-  const [orders, setOrders] = useState<Order[] | null>(null);
+/** Keeps data fresh (an order the bot just created, a stock level that just dropped) without a page reload. */
+export function usePolling<T>(load: () => Promise<T>, onUnauthorized: () => void, enabled = true) {
+  const [data, setData] = useState<T | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [reloads, setReloads] = useState(0);
 
   useEffect(() => {
+    if (!enabled) {
+      return;
+    }
     let stopped = false;
     let timer: number | undefined;
     async function tick() {
       try {
         const latest = await load();
         if (!stopped) {
-          setOrders(latest);
+          setData(latest);
           setError(null);
         }
       } catch (e) {
@@ -28,7 +30,7 @@ export function useOrders(load: () => Promise<Order[]>, onUnauthorized: () => vo
           onUnauthorized();
           return;
         }
-        setError("Could not load orders. Retrying…");
+        setError("Could not refresh the data. Retrying…");
       }
       if (!stopped) {
         timer = window.setTimeout(tick, POLL_MS);
@@ -39,8 +41,8 @@ export function useOrders(load: () => Promise<Order[]>, onUnauthorized: () => vo
       stopped = true;
       window.clearTimeout(timer);
     };
-  }, [load, onUnauthorized, reloads]);
+  }, [load, onUnauthorized, enabled, reloads]);
 
   const reload = useCallback(() => setReloads((n) => n + 1), []);
-  return { orders, error, reload };
+  return { data, error, reload };
 }

@@ -3,13 +3,13 @@ import { fetchMyOrders } from "../api/orders";
 import { useAuth } from "../auth/AuthContext";
 import { countItems, describeItems, formatVnd, formatWhen } from "./format";
 import { StatusPill } from "./StatusPill";
-import { useOrders } from "./useOrders";
+import { usePolling } from "../api/usePolling";
 
 export function MyOrdersPage() {
   const { session, logout } = useAuth();
   const token = session!.token;
   const load = useCallback(() => fetchMyOrders(token), [token]);
-  const { orders, error } = useOrders(load, logout);
+  const { data: orders, error } = usePolling(load, logout);
 
   return (
     <div className="page">

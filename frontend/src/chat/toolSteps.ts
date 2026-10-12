@@ -8,6 +8,9 @@ export interface ToolCall {
   args: string;
   failed: boolean;
   orderId?: number;
+  /** The product a getProduct call looked up; listProducts shows the whole menu instead. */
+  productSku?: string;
+  listsProducts: boolean;
 }
 
 function summarizeArgs(raw: unknown): string {
@@ -28,6 +31,14 @@ export function toolCalls(steps: TraceStep[]): ToolCall[] {
       const failed = !/^[[{]/.test(result);
       // The result is abbreviated for the Inspector, so read the id from its start rather than parsing it whole.
       const id = ORDER_TOOLS.has(name) && !failed ? /"id":\s*(\d+)/.exec(result)?.[1] : undefined;
-      return { name, args: summarizeArgs(step.detail.args), failed, orderId: id ? Number(id) : undefined };
+      const sku = name === "getProduct" && !failed ? /"sku":\s*"([^"]+)"/.exec(result)?.[1] : undefined;
+      return {
+        name,
+        args: summarizeArgs(step.detail.args),
+        failed,
+        orderId: id ? Number(id) : undefined,
+        productSku: sku,
+        listsProducts: name === "listProducts" && !failed,
+      };
     });
 }

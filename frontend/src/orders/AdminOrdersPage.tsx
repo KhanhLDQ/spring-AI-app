@@ -4,7 +4,7 @@ import { ApiError, UnauthorizedError } from "../api/http";
 import { useAuth } from "../auth/AuthContext";
 import { countItems, describeItems, formatVnd } from "./format";
 import { StatusPill } from "./StatusPill";
-import { useOrders } from "./useOrders";
+import { usePolling } from "../api/usePolling";
 
 type Filter = "ALL" | OrderStatus;
 
@@ -20,7 +20,7 @@ export function AdminOrdersPage() {
   const { session, logout } = useAuth();
   const token = session!.token;
   const load = useCallback(() => fetchAllOrders(token), [token]);
-  const { orders, error, reload } = useOrders(load, logout);
+  const { data: orders, error, reload } = usePolling(load, logout);
   const [filter, setFilter] = useState<Filter>("ALL");
   const [actionError, setActionError] = useState<string | null>(null);
 

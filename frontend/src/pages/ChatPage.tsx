@@ -1,19 +1,24 @@
-import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
+import { Fragment, useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { fetchMyOrders } from "../api/orders";
+import { fetchProducts } from "../api/products";
+import { usePolling } from "../api/usePolling";
 import { useAuth } from "../auth/AuthContext";
 import { OrderCard } from "../chat/OrderCard";
+import { ProductCards } from "../chat/ProductCards";
 import { ToolChips } from "../chat/ToolChips";
 import { toolCalls } from "../chat/toolSteps";
 import { TurnMeta } from "../chat/TurnMeta";
 import { useChat } from "../chat/useChat";
 import { Inspector } from "../inspector/Inspector";
-import { useOrders } from "../orders/useOrders";
 
 export function ChatPage({ onOpenOrders }: { onOpenOrders: () => void }) {
   const { session, logout } = useAuth();
   const { turns, send, busy, ready, newChat } = useChat(session!.token, logout);
   const loadMine = useCallback(() => fetchMyOrders(session!.token), [session]);
-  const { orders } = useOrders(loadMine, logout);
+  const { data: orders } = usePolling(loadMine, logout);
+  const loadProducts = useCallback(() => fetchProducts(session!.token), [session]);
+  const showsProducts = turns.some((t) => toolCalls(t.steps).some((c) => c.listsProducts || c.productSku));
+  const { data: products } = usePolling(loadProducts, logout, showsProducts);
   const [draft, setDraft] = useState("");
   const end = useRef<HTMLDivElement>(null);
   const [selected, setSelected] = useState(0);
@@ -99,7 +104,14 @@ export function ChatPage({ onOpenOrders }: { onOpenOrders: () => void }) {
                     )}
                     {toolCalls(turn.steps).map((call, i) => {
                       const order = orders?.find((o) => o.id === call.orderId);
-                      return order && <OrderCard key={i} order={order} onOpenOrders={onOpenOrders} />;
+                      const looked = products?.filter((p) => p.sku === call.productSku) ?? [];
+                      return (
+                        <Fragment key={i}>
+                          {order && <OrderCard order={order} onOpenOrders={onOpenOrders} />}
+                          {call.listsProducts && products && <ProductCards products={products} />}
+                          {looked.length > 0 && <ProductCards products={looked} />}
+                        </Fragment>
+                      );
                     })}
                     {turn.stats && <TurnMeta stats={turn.stats} />}
                     {turn.status === "error" && (
