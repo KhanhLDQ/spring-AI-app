@@ -5,6 +5,7 @@ import { AuthProvider } from "./auth/AuthContext";
 import "./styles/tokens.css";
 import "./styles/login.css";
 import "./styles/chat.css";
+import "./styles/inspector.css";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>

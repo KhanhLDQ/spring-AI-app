@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { newConversation, streamChat, UnauthorizedError } from "../api/chat";
+import { newConversation, streamChat, UnauthorizedError, type TraceStep, type TurnStats } from "../api/chat";
 
 export interface Turn {
   id: number;
@@ -7,6 +7,8 @@ export interface Turn {
   answer: string;
   status: "streaming" | "done" | "error";
   error?: string;
+  steps: TraceStep[];
+  stats?: TurnStats;
 }
 
 export function useChat(token: string, onUnauthorized: () => void) {
@@ -43,7 +45,7 @@ export function useChat(token: string, onUnauthorized: () => void) {
         return;
       }
       const id = nextId.current++;
-      setTurns((all) => [...all, { id, question, answer: "", status: "streaming" }]);
+      setTurns((all) => [...all, { id, question, answer: "", status: "streaming", steps: [] }]);
       const controller = new AbortController();
       abort.current = controller;
       try {
@@ -53,6 +55,8 @@ export function useChat(token: string, onUnauthorized: () => void) {
           question,
           {
             onToken: (text) => update(id, (t) => ({ ...t, answer: t.answer + text })),
+            onStep: (step) => update(id, (t) => ({ ...t, steps: [...t.steps, step] })),
+            onDone: (stats) => update(id, (t) => ({ ...t, stats })),
             onError: (message) => update(id, (t) => ({ ...t, status: "error", error: message })),
           },
           controller.signal,

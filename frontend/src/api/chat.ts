@@ -2,8 +2,29 @@ import { fetchEventSource } from "@microsoft/fetch-event-source";
 
 export class UnauthorizedError extends Error {}
 
+export type StepKind = "cache" | "cachewrite" | "memory" | "rag" | "model" | "tool";
+
+export interface TraceStep {
+  kind: StepKind;
+  title: string;
+  concept: string;
+  startMs: number;
+  durMs: number;
+  detail: Record<string, unknown>;
+}
+
+export interface TurnStats {
+  ms: number;
+  tokensIn: number;
+  tokensOut: number;
+  cost: number;
+  cache: "HIT" | "MISS";
+}
+
 export interface StreamHandlers {
   onToken: (text: string) => void;
+  onStep: (step: TraceStep) => void;
+  onDone: (stats: TurnStats) => void;
   onError: (message: string) => void;
 }
 
@@ -49,6 +70,10 @@ export async function streamChat(
     onmessage(event) {
       if (event.event === "token") {
         handlers.onToken(JSON.parse(event.data).text);
+      } else if (event.event === "step") {
+        handlers.onStep(JSON.parse(event.data));
+      } else if (event.event === "done") {
+        handlers.onDone(JSON.parse(event.data));
       } else if (event.event === "error") {
         handlers.onError(JSON.parse(event.data).message);
       }

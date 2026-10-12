@@ -26,4 +26,4 @@
 .composer input { flex: 1; min-width: 0; border: 1px solid var(--line); border-radius: .8rem; padding: .7rem 1rem; background: var(--bg); }
 .b-error { color: var(--bad); background: var(--bad-soft); border-radius: .5rem; padding: .45rem .8rem; }
 #root { height: 100vh; display: flex; flex-direction: column; }
-#root > .convo { flex: 1; }
+#root > .chat { flex: 1; }
