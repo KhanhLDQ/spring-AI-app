@@ -1,0 +1,12 @@
+spring:
+  ai:
+    anthropic:
+      chat:
+        options:
+          model: claude-haiku-4-5
+          max-tokens: 1024
+
+kefir:
+  pricing:
+    input-per-mtok: 1
+    output-per-mtok: 5
