@@ -10,7 +10,6 @@
 .role-btn span { color: var(--muted); font-size: .85rem; }
 .role-btn:disabled { opacity: .6; cursor: default; }
 .form-error { margin: 0; color: var(--bad); font-size: .9rem; }
-.placeholder { padding: 2rem; display: flex; align-items: center; gap: 1rem; }
 @media (max-width: 760px) {
   .login { grid-template-columns: minmax(0, 1fr); }
   .login-art, .login-form { padding: 1.7rem 1rem; }
