@@ -13,6 +13,10 @@ export const sourceLabel = (chunk: RagChunk) => (chunk.page ? `${chunk.source} Â
 
 /** One entry per distinct file and page, in retrieval order, numbered the way the chips show them. */
 export function citedSources(steps: TraceStep[]): { label: string; text: string }[] {
+  // A turn that called a tool was an action, not a lookup; the chunks retrieval added anyway are noise as citations.
+  if (steps.some((step) => step.kind === "tool")) {
+    return [];
+  }
   const seen = new Map<string, { label: string; text: string }>();
   for (const chunk of ragChunks(steps)) {
     const label = sourceLabel(chunk);
