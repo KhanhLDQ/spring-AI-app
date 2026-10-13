@@ -1,4 +1,5 @@
 import { Fragment, useCallback, useEffect, useRef, useState, type FormEvent } from "react";
+import { Markdown } from "../chat/Markdown";
 import { fetchMyOrders } from "../api/orders";
 import { fetchProducts } from "../api/products";
 import { usePolling } from "../api/usePolling";
@@ -99,7 +100,7 @@ export function ChatPage({ onOpenOrders }: { onOpenOrders: () => void }) {
                   <div className="b-main">
                     <CacheChip stats={turn.stats} steps={turn.steps} />
                     <ToolChips calls={toolCalls(turn.steps)} />
-                    {turn.answer && <div className="b-text">{turn.answer}</div>}
+                    {turn.answer && <div className="b-text"><Markdown text={turn.answer} /></div>}
                     {turn.status === "done" && <SourceChips steps={turn.steps} />}
                     {turn.status === "streaming" && !turn.answer && (
                       <span className="dots" aria-label="Thinking">
