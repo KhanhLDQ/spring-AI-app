@@ -49,6 +49,16 @@ class OrderServiceIntegrationTest {
     }
 
     @Test
+    void sampleOrdersAreInThePastSoNewOrdersAlwaysListFirst() {
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM orders WHERE created_at >= now()", Long.class)).isZero();
+
+        OrderView fresh = orders.create("an", "Kefir Mật Ong 330ml", 1);
+
+        assertThat(orders.listMine("an").getFirst().id()).isEqualTo(fresh.id());
+        assertThat(orders.listAll(null).getFirst().id()).isEqualTo(fresh.id());
+    }
+
+    @Test
     void createReservesStockAndPricesTheOrder() {
         OrderView order = orders.create("an", "Kefir Mật Ong 330ml", 3);
 
