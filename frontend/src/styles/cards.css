@@ -21,3 +21,10 @@
 .rev-top { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: .25rem; border-top: 1px solid var(--line); padding-top: .5rem; font-size: .85rem; }
 .rev-top li { display: flex; justify-content: space-between; gap: .8rem; }
 .rev-top .num { color: var(--muted); font-variant-numeric: tabular-nums; }
+.brief { border-top: 1px solid var(--line); padding-top: .6rem; display: flex; flex-direction: column; gap: .45rem; }
+.brief-head { font: 700 .95rem var(--font-display); }
+.brief ul { margin: 0; padding-left: 1.2rem; font-size: .88rem; }
+.brief-tip { margin: 0; padding: .45rem .6rem; border-radius: .5rem; background: var(--accent-soft); font-size: .86rem; }
+.brief details { font-size: .8rem; }
+.brief summary { cursor: pointer; color: var(--muted); }
+.brief pre { margin: .4rem 0 0; padding: .5rem; border-radius: .4rem; background: var(--surface2); font: 400 .72rem var(--font-mono); white-space: pre-wrap; overflow-wrap: anywhere; max-height: 9rem; overflow: auto; }
