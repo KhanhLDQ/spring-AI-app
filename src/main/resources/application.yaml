@@ -22,12 +22,21 @@ spring:
   mvc:
     problemdetails:
       enabled: true
+  servlet:
+    multipart:
+      max-file-size: ${kefir.knowledge.max-file-size}
+      max-request-size: ${kefir.knowledge.max-file-size}
   jpa:
     hibernate:
       ddl-auto: validate
     open-in-view: false
 
 kefir:
+  knowledge:
+    max-file-size: 10MB
+    max-pages: 50
+    chunk-tokens: 400
+    seed-on-start: true
   jwt:
     signing-key: ${JWT_SIGNING_KEY:}
     ttl: 24h

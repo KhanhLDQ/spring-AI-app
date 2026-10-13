@@ -13,7 +13,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
-@SpringBootTest
+@SpringBootTest(properties = "kefir.knowledge.seed-on-start=false")
 @AutoConfigureMockMvc
 @ActiveProfiles("dev")
 @Import(TestcontainersConfiguration.class)
