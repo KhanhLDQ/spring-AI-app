@@ -63,7 +63,7 @@ class ChatRagIntegrationTest {
 
         assertThat(reply.answer()).contains("dưới 3 ngày");
         List<String> kinds = reply.data("step").stream().map(s -> s.get("kind").asString()).toList();
-        assertThat(kinds).containsExactly("rag", "model");
+        assertThat(kinds).containsExactly("memory", "rag", "model");
     }
 
     @Test

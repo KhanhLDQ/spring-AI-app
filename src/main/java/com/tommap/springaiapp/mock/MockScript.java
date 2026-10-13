@@ -44,6 +44,13 @@ final class MockScript {
     private static final String FALLBACK = "This is a simulated answer (mock mode, no real model call).";
     private static final Pattern CANCEL = Pattern.compile("(?:cancel|huỷ|hủy)\\s+(?:order|đơn)?\\s*#?(\\d+)");
     private static final Pattern CHANGE = Pattern.compile("(?:change|update)\\s+order\\s+#?(\\d+)\\s+to\\s+(\\d+)");
+    private static final Pattern FOLLOW_UP = Pattern.compile(
+            "(?:(?:make it|change it to|đổi (?:nó )?thành)\\s+(\\d+))|(?:cancel it|huỷ nó|hủy nó|huỷ đơn đó|hủy đơn đó)");
+    private static final Pattern ORDER_ID = Pattern.compile("Order #(\\d+)");
+    private static final Pattern NAME_GIVEN = Pattern.compile(
+            "(?:my name is|tên mình là|tên tôi là|mình tên là|tôi tên là)\\s+(\\p{L}+)", Pattern.CASE_INSENSITIVE);
+    private static final Pattern NAME_ASKED = Pattern.compile(
+            "what(?:'s| is) my name|tên (?:mình|tôi) là gì|(?:mình|tôi) tên (?:là )?gì");
     private static final Pattern ORDER = Pattern.compile("(?:order|đặt)\\s+(\\d+)\\s+(?:chai\\s+)?(.+)");
     private static final Pattern PRICE = Pattern.compile("(?:price|how much|giá)\\s+(?:of\\s+|is\\s+)?(.+)");
     private static final Pattern GREETING_EN = Pattern.compile("\\b(hello|hi)\\b");
@@ -62,7 +69,8 @@ final class MockScript {
             return Reply.text(afterTools(toolResults));
         }
         String message = lastUserText(conversation);
-        return reply(RagPrompt.questionOf(message), RagPrompt.contextOf(message));
+        return reply(RagPrompt.questionOf(message), RagPrompt.contextOf(message),
+                conversation.subList(0, conversation.size() - 1));
     }
 
     private static String lastUserText(List<Message> conversation) {
@@ -74,7 +82,7 @@ final class MockScript {
         return "";
     }
 
-    private static Reply reply(String question, Optional<String> context) {
+    private static Reply reply(String question, Optional<String> context, List<Message> history) {
         String q = question == null ? "" : question.toLowerCase(Locale.ROOT);
         Matcher cancel = CANCEL.matcher(q);
         if (cancel.find()) {
@@ -84,6 +92,22 @@ final class MockScript {
         if (change.find()) {
             return Reply.tool("updateOrderQuantity",
                     "{\"orderId\":" + change.group(1) + ",\"newQuantity\":" + change.group(2) + "}");
+        }
+        Matcher follow = FOLLOW_UP.matcher(q);
+        if (follow.find()) {
+            return followUp(follow, history, question);
+        }
+        Matcher nameGiven = NAME_GIVEN.matcher(question);
+        if (nameGiven.find()) {
+            String name = nameGiven.group(1);
+            return Reply.text(NON_ASCII.matcher(question).find() || q.contains("tên")
+                    ? "Rất vui được gặp bạn, " + name + "!" : "Nice to meet you, " + name + "!");
+        }
+        if (NAME_ASKED.matcher(q).find()) {
+            return nameFrom(history).map(name -> Reply.text(vietnamese(question)
+                            ? "Tên bạn là " + name + "." : "Your name is " + name + "."))
+                    .orElse(Reply.text(vietnamese(question)
+                            ? "Mình chưa biết tên bạn." : "I don't know your name yet."));
         }
         Matcher order = ORDER.matcher(q);
         if (order.find()) {
@@ -124,7 +148,7 @@ final class MockScript {
         if (!best.isEmpty()) {
             return String.join("\n\n", best);
         }
-        return NON_ASCII.matcher(question).find()
+        return vietnamese(question)
                 ? "Xin lỗi, mình không có thông tin về điều này."
                 : "Sorry, I don't have that information.";
     }
@@ -158,6 +182,46 @@ final class MockScript {
     private static List<String> words(String text) {
         return List.of(text.toLowerCase(Locale.ROOT).split("[^\\p{L}\\p{N}]+")).stream()
                 .filter(word -> word.length() >= 3).toList();
+    }
+
+    /** "make it 4" or "cancel it": the order is whichever the assistant last reported, like a model reading its memory. */
+    private static Reply followUp(Matcher follow, List<Message> history, String question) {
+        Optional<String> orderId = lastOrderId(history);
+        if (orderId.isEmpty()) {
+            return Reply.text(vietnamese(question) ? "Bạn muốn nói đơn nào?" : "Which order do you mean?");
+        }
+        return follow.group(1) != null
+                ? Reply.tool("updateOrderQuantity",
+                        "{\"orderId\":" + orderId.get() + ",\"newQuantity\":" + follow.group(1) + "}")
+                : Reply.tool("cancelOrder", "{\"orderId\":" + orderId.get() + "}");
+    }
+
+    private static Optional<String> lastOrderId(List<Message> history) {
+        for (int i = history.size() - 1; i >= 0; i--) {
+            if (history.get(i).getMessageType() == MessageType.ASSISTANT) {
+                Matcher id = ORDER_ID.matcher(String.valueOf(history.get(i).getText()));
+                if (id.find()) {
+                    return Optional.of(id.group(1));
+                }
+            }
+        }
+        return Optional.empty();
+    }
+
+    private static Optional<String> nameFrom(List<Message> history) {
+        for (int i = history.size() - 1; i >= 0; i--) {
+            if (history.get(i).getMessageType() == MessageType.USER) {
+                Matcher name = NAME_GIVEN.matcher(RagPrompt.questionOf(String.valueOf(history.get(i).getText())));
+                if (name.find()) {
+                    return Optional.of(name.group(1));
+                }
+            }
+        }
+        return Optional.empty();
+    }
+
+    private static boolean vietnamese(String question) {
+        return NON_ASCII.matcher(question).find();
     }
 
     private static String skuFor(String productWords) {

@@ -34,8 +34,12 @@ final class ChatTestClient {
     }
 
     Reply chat(String token, String message) throws Exception {
+        return chat(token, UUID.randomUUID(), message);
+    }
+
+    Reply chat(String token, UUID conversationId, String message) throws Exception {
         MvcResult started = mvc.perform(post("/api/chat/stream").header("Authorization", "Bearer " + token)
-                        .contentType(MediaType.APPLICATION_JSON).content(requestJson(message)))
+                        .contentType(MediaType.APPLICATION_JSON).content(requestJson(conversationId, message)))
                 .andExpect(request().asyncStarted()).andReturn();
         // SSE is always UTF-8, but the content type carries no charset and MockMvc would decode as ISO-8859-1.
         String body = mvc.perform(asyncDispatch(started)).andExpect(status().isOk())
@@ -44,7 +48,11 @@ final class ChatTestClient {
     }
 
     static String requestJson(String message) {
-        return JSON.createObjectNode().put("conversationId", UUID.randomUUID().toString())
+        return requestJson(UUID.randomUUID(), message);
+    }
+
+    static String requestJson(UUID conversationId, String message) {
+        return JSON.createObjectNode().put("conversationId", conversationId.toString())
                 .put("message", message).toString();
     }
 

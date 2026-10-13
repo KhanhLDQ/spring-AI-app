@@ -15,6 +15,7 @@ import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 
@@ -46,12 +47,13 @@ class ChatService {
         long startNanos = System.nanoTime();
 
         // Built here on the request thread: SecurityContextHolder is empty inside reactor threads and tools.
-        Map<String, Object> toolContext = ToolCaller.contextFor(user, user.username() + ":" + conversationId);
+        String memoryKey = memoryKey(user, conversationId);
+        Map<String, Object> toolContext = ToolCaller.contextFor(user, memoryKey);
 
         Flux<ChatEvent> tokens = chatClient.prompt()
                 .system(SystemPrompts.forRole(user.role()))
                 .user(message)
-                .advisors(a -> a.param(TraceCollector.TRACE_ID_PARAM, traceId))
+                .advisors(a -> a.param(TraceCollector.TRACE_ID_PARAM, traceId).param(ChatMemory.CONVERSATION_ID, memoryKey))
                 .tools(catalogTools, orderTools)
                 .toolContext(toolContext)
                 .stream()
@@ -66,6 +68,11 @@ class ChatService {
                     log.warn("Chat turn failed: {}", error.getClass().getSimpleName());
                     return Flux.just(new ChatEvent.Error("The model is unavailable right now. Please try again shortly."));
                 });
+    }
+
+    /** The caller's name is part of the key, so no one can read or continue another user's conversation. */
+    static String memoryKey(AuthenticatedUser user, UUID conversationId) {
+        return user.username() + ":" + conversationId;
     }
 
     private Flux<ChatEvent> finish(String traceId, long startNanos) {

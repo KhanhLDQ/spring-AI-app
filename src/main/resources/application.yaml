@@ -11,6 +11,11 @@ spring:
       audio.speech: none
       audio.transcription: none
       moderation: none
+    chat:
+      memory:
+        repository:
+          jdbc:
+            initialize-schema: never   # Flyway owns spring_ai_chat_memory (V4)
     anthropic:
       api-key: ${ANTHROPIC_API_KEY}
     openai:
@@ -32,6 +37,8 @@ spring:
     open-in-view: false
 
 kefir:
+  memory:
+    window-size: 20
   knowledge:
     max-file-size: 10MB
     max-pages: 50

@@ -6,6 +6,7 @@ import com.tommap.springaiapp.knowledge.RagPrompt;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
+import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.ai.chat.prompt.PromptTemplate;
@@ -78,5 +79,35 @@ class MockScriptTest {
         var reply = withContext("How long does honey kefir keep?", "## Menu overview\nOrder online, see all products.");
 
         assertThat(reply.hasToolCalls()).isFalse();
+    }
+
+    @Test
+    void followUpEditsTheOrderTheAssistantLastReported() {
+        var conversation = List.<Message>of(
+                new UserMessage("order 2 honey kefir"),
+                new AssistantMessage("Done. Order #1048 is PENDING, total 76000 VND."),
+                new UserMessage("make it 4"));
+
+        var call = MockScript.replyTo(conversation).toolCalls().getFirst();
+
+        assertThat(call.name()).isEqualTo("updateOrderQuantity");
+        assertThat(call.arguments()).isEqualTo("{\"orderId\":1048,\"newQuantity\":4}");
+    }
+
+    @Test
+    void followUpWithNothingToRefIsAQuestion() {
+        assertThat(reply("cancel it").text()).isEqualTo("Which order do you mean?");
+        assertThat(reply("huỷ nó").text()).isEqualTo("Bạn muốn nói đơn nào?");
+    }
+
+    @Test
+    void nameIsRememberedFromEarlierUserMessages() {
+        var conversation = List.<Message>of(
+                new UserMessage("Tên mình là Lan"),
+                new AssistantMessage("Rất vui được gặp bạn, Lan!"),
+                new UserMessage("mình tên gì?"));
+
+        assertThat(MockScript.replyTo(conversation).text()).isEqualTo("Tên bạn là Lan.");
+        assertThat(reply("what is my name?").text()).isEqualTo("I don't know your name yet.");
     }
 }
