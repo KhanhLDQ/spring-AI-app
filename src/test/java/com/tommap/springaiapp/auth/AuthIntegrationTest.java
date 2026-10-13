@@ -90,8 +90,21 @@ class AuthIntegrationTest {
     }
 
     @Test
-    void mcpEndpointIsClosed() throws Exception {
-        mvc.perform(get("/mcp")).andExpect(status().isUnauthorized());
+    void mcpIsOnlyOpenToThisMachineAndNotToWebPages() throws Exception {
+        mvc.perform(get("/mcp").with(from("10.0.0.5"))).andExpect(status().isUnauthorized());
+        mvc.perform(get("/mcp").with(from("127.0.0.1")).header("Origin", "https://evil.example"))
+                .andExpect(status().isUnauthorized());
+        mvc.perform(get("/mcp").with(from("127.0.0.1")).header("Origin", "http://localhost:5173"))
+                .andExpect(status().is(org.hamcrest.Matchers.not(401)));
+        mvc.perform(get("/mcp").with(from("::1"))).andExpect(status().is(org.hamcrest.Matchers.not(401)));
+        mvc.perform(get("/sse").with(from("10.0.0.5"))).andExpect(status().isUnauthorized());
+    }
+
+    private static org.springframework.test.web.servlet.request.RequestPostProcessor from(String address) {
+        return request -> {
+            request.setRemoteAddr(address);
+            return request;
+        };
     }
 
     private String login(String username) throws Exception {

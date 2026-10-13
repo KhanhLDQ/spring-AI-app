@@ -16,6 +16,14 @@ spring:
         repository:
           jdbc:
             initialize-schema: never   # Flyway owns spring_ai_chat_memory (V4)
+    mcp:
+      server:
+        name: kefir
+        version: 1.0.0
+        protocol: STREAMABLE
+        instructions: >-
+          Read-only access to the Mayiu Kefir shop: the product list with prices and stock, and a search over the
+          shop knowledge base. Ordering and revenue are not available here.
     anthropic:
       api-key: ${ANTHROPIC_API_KEY}
       # Provider-side limits: a failing call is retried at most twice and each attempt is bounded, so a bad

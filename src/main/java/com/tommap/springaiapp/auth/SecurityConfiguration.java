@@ -25,8 +25,7 @@ class SecurityConfiguration {
                         .requestMatchers("/api/auth/quick-login", "/actuator/health").permitAll()
                         .requestMatchers("/api/admin/**").hasRole(Role.ADMIN.name())
                         .requestMatchers("/api/**").authenticated()
-                        // MCP gets its own localhost-only rule when that slice lands; closed until then.
-                        .requestMatchers("/mcp/**").denyAll()
+                        .requestMatchers("/mcp/**", "/sse", "/sse/**").access(new McpAccess())
                         .anyRequest().permitAll())
                 .oauth2ResourceServer(oauth -> oauth
                         .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter()))

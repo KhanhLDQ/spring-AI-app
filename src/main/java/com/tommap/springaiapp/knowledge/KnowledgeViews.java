@@ -14,10 +14,6 @@ record EtlTimings(long readMs, long splitMs, long embedMs, long storeMs, int chu
 record IngestResult(long id, String filename, int chunkCount, EtlTimings etl) {
 }
 
-/** score is cosine similarity (1 = identical); page is null for Markdown sources. */
-record SearchHit(String source, Integer page, double score, String text) {
-}
-
 /** The chunk size in force, the default it resets to, and what the knowledge base holds at that size. */
 record ChunkingView(int chunkTokens, int defaultChunkTokens, int documents, int chunks) {
 }
