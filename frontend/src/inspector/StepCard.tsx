@@ -32,6 +32,15 @@ function StepBody({ step }: { step: TraceStep }) {
       </>
     );
   }
+  if (step.kind === "memory") {
+    const loaded = Number(d.messagesLoaded ?? 0);
+    return (
+      <p>
+        <b>{loaded}</b> message(s) from this conversation added before the question · window <b>{String(d.windowSize ?? "")}</b>
+        {loaded === 0 && " · a new conversation starts empty"}
+      </p>
+    );
+  }
   if (step.kind === "rag") {
     return <RagBody detail={d as unknown as RagDetail} />;
   }
