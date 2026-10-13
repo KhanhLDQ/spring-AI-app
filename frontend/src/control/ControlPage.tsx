@@ -19,6 +19,8 @@ const ACTIONS: ActionSpec[] = [
   { action: "clear-memory", label: "Clear chat memory", hint: "Every conversation forgets what was said.", warning: "Delete all conversation memory?" },
 ];
 
+const NAMES = { cache: "Cache", rag: "RAG", route: "Router" } as const;
+
 function Slider({ label, hint, value, onChange, onCommit }: { label: string; hint: string; value: number; onChange: (v: number) => void; onCommit: (v: number) => void }) {
   return (
     <div className="slider">
@@ -49,6 +51,7 @@ export function ControlPage() {
   const { data: config, error, reload } = usePolling(load, logout);
   const [cache, setCache] = useState<number | null>(null);
   const [rag, setRag] = useState<number | null>(null);
+  const [route, setRoute] = useState<number | null>(null);
   const [pending, setPending] = useState<DemoAction | null>(null);
   const [done, setDone] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -58,6 +61,7 @@ export function ControlPage() {
     if (config && cache === null) {
       setCache(config.thresholds.cache);
       setRag(config.thresholds.rag);
+      setRoute(config.thresholds.route);
     }
   }, [config, cache]);
 
@@ -85,12 +89,13 @@ export function ControlPage() {
         const fresh = await fetchConfig(token);
         setCache(fresh.thresholds.cache);
         setRag(fresh.thresholds.rag);
+        setRoute(fresh.thresholds.route);
       }
     }, `${spec.label}: done.`);
   }
 
-  const commit = (key: "cache" | "rag") => (value: number) =>
-    run(async () => void (await setThresholds(token, { [key]: value })), `${key === "cache" ? "Cache" : "RAG"} threshold set to ${value.toFixed(2)}.`);
+  const commit = (key: keyof typeof NAMES) => (value: number) =>
+    run(async () => void (await setThresholds(token, { [key]: value })), `${NAMES[key]} threshold set to ${value.toFixed(2)}.`);
 
   const used = config?.budget.usedUsd ?? 0;
   const limit = config?.budget.limitUsd ?? 0;
@@ -113,10 +118,12 @@ export function ControlPage() {
             <h2>Similarity thresholds</h2>
           </div>
           <div className="ctl-body">
-            {cache !== null && rag !== null ? (
+            {cache !== null && rag !== null && route !== null ? (
               <>
                 <Slider label="Semantic cache" value={cache} onChange={setCache} onCommit={commit("cache")}
                   hint="Above this score a new question counts as already answered. Too low and a different question gets the wrong cached answer." />
+                <Slider label="Query router" value={route} onChange={setRoute} onCommit={commit("route")}
+                  hint="A message must score at least this against the order examples to skip the knowledge search. Set to 1.00 and every message is searched." />
                 <Slider label="RAG retrieval" value={rag} onChange={setRag} onCommit={commit("rag")}
                   hint="Chunks scoring below this are not given to the model. Too high and the bot says it does not know." />
               </>

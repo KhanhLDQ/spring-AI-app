@@ -3,7 +3,7 @@ import { request, UnauthorizedError } from "./http";
 
 export { UnauthorizedError };
 
-export type StepKind = "cache" | "cachewrite" | "memory" | "rag" | "model" | "tool";
+export type StepKind = "cache" | "cachewrite" | "memory" | "route" | "rag" | "model" | "tool";
 
 export interface TraceStep {
   kind: StepKind;

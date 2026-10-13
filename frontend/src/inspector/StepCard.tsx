@@ -5,6 +5,7 @@ import { HOW_SPRING_AI_DOES_IT } from "./howSpringAiDoesIt";
 
 const ICONS: Record<StepKind, string> = {
   tool: "M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.6 2.6-2.4-.6-.6-2.4z",
+  route: "M5 4v6a4 4 0 0 0 4 4h6M15 10l4 4-4 4",
   rag: "M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2zM4 19V5",
   memory: "M12 3l9 5-9 5-9-5zM3 13l9 5 9-5",
   cache: "M13 2L4 14h7l-1 8 9-12h-7z",
@@ -71,10 +72,43 @@ function StepBody({ step }: { step: TraceStep }) {
       </p>
     );
   }
+  if (step.kind === "route") {
+    return <RouteBody detail={d} />;
+  }
   if (step.kind === "rag") {
     return <RagBody detail={d as unknown as RagDetail} />;
   }
   return null;
+}
+
+function ScoreRow({ label, score }: { label: string; score: number }) {
+  return (
+    <div className="chunk">
+      <q>{label}</q>
+      <span className="score">{score.toFixed(2)}</span>
+      <div className="bar">
+        <i style={{ width: `${Math.round(Math.min(Math.max(score, 0), 1) * 100)}%` }} />
+      </div>
+    </div>
+  );
+}
+
+function RouteBody({ detail }: { detail: Record<string, unknown> }) {
+  const order = Number(detail.transactional ?? 0);
+  const knowledge = Number(detail.knowledge ?? 0);
+  const threshold = Number(detail.threshold ?? 0);
+  const margin = Number(detail.margin ?? 0);
+  return (
+    <>
+      <ScoreRow label="Closest order example" score={order} />
+      <ScoreRow label="Closest knowledge example" score={knowledge} />
+      <span className={detail.skip ? "note ok" : "note"}>
+        {detail.skip
+          ? `Order ${order.toFixed(2)} ≥ ${threshold.toFixed(2)} and ahead of knowledge by at least ${margin.toFixed(2)}, so the vector store is not searched.`
+          : "Not clearly an order request (needs a score of " + threshold.toFixed(2) + " and a lead of " + margin.toFixed(2) + "), so the knowledge base is searched."}
+      </span>
+    </>
+  );
 }
 
 function RagBody({ detail }: { detail: RagDetail }) {

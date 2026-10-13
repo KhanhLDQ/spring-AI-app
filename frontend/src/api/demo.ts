@@ -3,6 +3,7 @@ import { request } from "./http";
 export interface Thresholds {
   cache: number;
   rag: number;
+  route: number;
 }
 
 export interface AppConfig {
