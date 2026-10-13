@@ -1,8 +1,12 @@
 package com.tommap.springaiapp.knowledge;
 
+import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.Clock;
+import java.util.Arrays;
+import java.util.Comparator;
 import java.util.HexFormat;
 import java.util.List;
 import com.tommap.springaiapp.cache.SemanticCache;
@@ -12,6 +16,8 @@ import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -19,7 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 /** The RAG ETL (read, split, embed, store) plus listing, retrieval testing and reset of the knowledge base. */
 @Service
-class KnowledgeService {
+public class KnowledgeService {
 
     private static final int SEARCH_TOP_K = 5;
 
@@ -90,10 +96,24 @@ class KnowledgeService {
 
     /** Cached answers were built on the old knowledge, so they go too. */
     @Transactional
-    void deleteAll() {
+    public void deleteAll() {
         jdbc.execute("TRUNCATE TABLE vector_store");
         cache.clear();
         docs.deleteAllInBatch();
+    }
+
+    /** Back to the bundled shop documents only; anything uploaded since is dropped. */
+    public void reseed() {
+        deleteAll();
+        try {
+            Resource[] files = new PathMatchingResourcePatternResolver().getResources("classpath:knowledge/*.md");
+            Arrays.sort(files, Comparator.comparing(Resource::getFilename));
+            for (Resource file : files) {
+                ingest(file.getFilename(), file.getContentAsByteArray());
+            }
+        } catch (IOException e) {
+            throw new UncheckedIOException("Bundled knowledge files could not be read", e);
+        }
     }
 
     /** Similarity search only, no model call; the threshold is left open so every score is visible. */

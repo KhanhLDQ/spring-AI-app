@@ -32,14 +32,16 @@ class ChatService {
     private final PricingProperties pricing;
     private final CatalogTools catalogTools;
     private final OrderTools orderTools;
+    private final UsageLedger usage;
 
     ChatService(ChatClient chatClient, TraceCollector traces, PricingProperties pricing, CatalogTools catalogTools,
-                OrderTools orderTools) {
+                OrderTools orderTools, UsageLedger usage) {
         this.chatClient = chatClient;
         this.traces = traces;
         this.pricing = pricing;
         this.catalogTools = catalogTools;
         this.orderTools = orderTools;
+        this.usage = usage;
     }
 
     Flux<ChatEvent> stream(AuthenticatedUser user, UUID conversationId, String message) {
@@ -82,9 +84,13 @@ class ChatService {
         long tokensIn = sum(steps, "tokensIn");
         long tokensOut = sum(steps, "tokensOut");
         long ms = (System.nanoTime() - startNanos) / 1_000_000;
+        BigDecimal cost = cost(tokensIn, tokensOut);
+        if (tokensIn + tokensOut > 0) {
+            usage.record(tokensIn, tokensOut, cost);
+        }
         return Flux.concat(
                 Flux.fromIterable(steps).map(ChatEvent.Step::new),
-                Flux.just(new ChatEvent.Done(ms, tokensIn, tokensOut, cost(tokensIn, tokensOut), cacheOutcome(steps))));
+                Flux.just(new ChatEvent.Done(ms, tokensIn, tokensOut, cost, cacheOutcome(steps))));
     }
 
     private static String cacheOutcome(List<TraceStep> steps) {

@@ -11,7 +11,11 @@ import org.springframework.ai.chat.client.ChatClientResponse;
 import org.springframework.ai.chat.client.advisor.api.AdvisorChain;
 import org.springframework.ai.chat.client.advisor.api.BaseAdvisor;
 import org.springframework.ai.chat.client.advisor.vectorstore.QuestionAnswerAdvisor;
+import org.springframework.ai.chat.client.advisor.api.Advisor;
+import org.springframework.ai.chat.prompt.PromptTemplate;
 import org.springframework.ai.document.Document;
+import org.springframework.ai.vectorstore.SearchRequest;
+import org.springframework.ai.vectorstore.VectorStore;
 import reactor.core.scheduler.Scheduler;
 
 /**
@@ -21,16 +25,31 @@ import reactor.core.scheduler.Scheduler;
  */
 public final class KnowledgeAdvisor implements BaseAdvisor {
 
-    private final QuestionAnswerAdvisor retrieval;
+    private final VectorStore store;
     private final TraceCollector traces;
     private final int topK;
-    private final double threshold;
+    private volatile double threshold;
+    private volatile QuestionAnswerAdvisor retrieval;
 
-    KnowledgeAdvisor(QuestionAnswerAdvisor retrieval, TraceCollector traces, int topK, double threshold) {
-        this.retrieval = retrieval;
+    KnowledgeAdvisor(VectorStore store, TraceCollector traces, int topK, double threshold) {
+        this.store = store;
         this.traces = traces;
         this.topK = topK;
-        this.threshold = threshold;
+        threshold(threshold);
+    }
+
+    public double threshold() {
+        return threshold;
+    }
+
+    /** QuestionAnswerAdvisor is immutable, so a new threshold means a new instance; turns in flight keep the old one. */
+    public void threshold(double value) {
+        this.retrieval = QuestionAnswerAdvisor.builder(store)
+                .searchRequest(SearchRequest.builder().topK(topK).similarityThreshold(value).build())
+                .promptTemplate(new PromptTemplate(RagPrompt.TEMPLATE))
+                .order(Advisor.DEFAULT_CHAT_MEMORY_PRECEDENCE_ORDER + 50)
+                .build();
+        this.threshold = value;
     }
 
     @Override

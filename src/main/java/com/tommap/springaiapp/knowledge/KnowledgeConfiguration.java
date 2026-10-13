@@ -1,12 +1,8 @@
 package com.tommap.springaiapp.knowledge;
 
 import com.tommap.springaiapp.trace.TraceCollector;
-import org.springframework.ai.chat.client.advisor.api.Advisor;
-import org.springframework.ai.chat.client.advisor.vectorstore.QuestionAnswerAdvisor;
-import org.springframework.ai.chat.prompt.PromptTemplate;
 import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.ai.transformer.splitter.TokenTextSplitter;
-import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.ai.vectorstore.pgvector.PgVectorStore;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -44,13 +40,7 @@ class KnowledgeConfiguration {
     KnowledgeAdvisor knowledgeAdvisor(@Qualifier(STORE) VectorStore store, KnowledgeProperties properties,
                                       TraceCollector traces) {
         KnowledgeProperties.Rag rag = properties.rag();
-        QuestionAnswerAdvisor retrieval = QuestionAnswerAdvisor.builder(store)
-                .searchRequest(SearchRequest.builder()
-                        .topK(rag.topK()).similarityThreshold(rag.similarityThreshold()).build())
-                .promptTemplate(new PromptTemplate(RagPrompt.TEMPLATE))
-                .order(Advisor.DEFAULT_CHAT_MEMORY_PRECEDENCE_ORDER + 50)
-                .build();
-        return new KnowledgeAdvisor(retrieval, traces, rag.topK(), rag.similarityThreshold());
+        return new KnowledgeAdvisor(store, traces, rag.topK(), rag.similarityThreshold());
     }
 
     @Bean

@@ -53,6 +53,8 @@ kefir:
   jwt:
     signing-key: ${JWT_SIGNING_KEY:}
     ttl: 24h
+  budget:
+    limit-usd: 5
   pricing:
     input-per-mtok: 2
     output-per-mtok: 10
