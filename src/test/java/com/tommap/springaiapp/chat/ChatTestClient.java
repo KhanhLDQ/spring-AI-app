@@ -16,24 +16,24 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
 /** Drives the chat endpoints like the frontend does: log in, send a message, read the SSE events. */
-final class ChatTestClient {
+public final class ChatTestClient {
 
     private static final JsonMapper JSON = JsonMapper.builder().build();
 
     private final MockMvc mvc;
 
-    ChatTestClient(MockMvc mvc) {
+    public ChatTestClient(MockMvc mvc) {
         this.mvc = mvc;
     }
 
-    String login(String username) throws Exception {
+    public String login(String username) throws Exception {
         String response = mvc.perform(post("/api/auth/quick-login").contentType(MediaType.APPLICATION_JSON)
                         .content("{\"username\":\"" + username + "\"}"))
                 .andReturn().getResponse().getContentAsString();
         return JSON.readTree(response).get("token").asString();
     }
 
-    Reply chat(String token, String message) throws Exception {
+    public Reply chat(String token, String message) throws Exception {
         return chat(token, UUID.randomUUID(), message);
     }
 
@@ -57,7 +57,7 @@ final class ChatTestClient {
     }
 
     /** The parsed event stream of one chat turn. */
-    record Reply(String body) {
+    public record Reply(String body) {
 
         List<String> eventNames() {
             return body.lines().filter(l -> l.startsWith("event:")).map(l -> l.substring(6).trim()).toList();
