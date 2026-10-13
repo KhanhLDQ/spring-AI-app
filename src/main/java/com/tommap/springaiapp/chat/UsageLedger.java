@@ -12,10 +12,12 @@ public class UsageLedger {
 
     private final JdbcTemplate jdbc;
     private final Clock clock;
+    private final BudgetProperties budget;
 
-    UsageLedger(JdbcTemplate jdbc, Clock clock) {
+    UsageLedger(JdbcTemplate jdbc, Clock clock, BudgetProperties budget) {
         this.jdbc = jdbc;
         this.clock = clock;
+        this.budget = budget;
     }
 
     void record(long tokensIn, long tokensOut, BigDecimal costUsd) {
@@ -25,5 +27,13 @@ public class UsageLedger {
 
     public BigDecimal totalUsd() {
         return jdbc.queryForObject("SELECT COALESCE(SUM(cost_usd), 0) FROM usage_log", BigDecimal.class);
+    }
+
+    public BigDecimal limitUsd() {
+        return budget.limitUsd();
+    }
+
+    public boolean exhausted() {
+        return totalUsd().compareTo(budget.limitUsd()) >= 0;
     }
 }

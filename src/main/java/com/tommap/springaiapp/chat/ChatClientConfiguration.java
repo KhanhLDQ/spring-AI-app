@@ -17,7 +17,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration(proxyBeanMethods = false)
-@EnableConfigurationProperties({PricingProperties.class, MemoryProperties.class})
+@EnableConfigurationProperties({PricingProperties.class, MemoryProperties.class, BudgetProperties.class})
 class ChatClientConfiguration {
 
     /**

@@ -18,8 +18,14 @@ spring:
             initialize-schema: never   # Flyway owns spring_ai_chat_memory (V4)
     anthropic:
       api-key: ${ANTHROPIC_API_KEY}
+      # Provider-side limits: a failing call is retried at most twice and each attempt is bounded, so a bad
+      # network cannot quietly spend the budget. The whole chat turn is also capped (ChatService.TURN_TIMEOUT).
+      max-retries: 2
+      timeout: 45s
     openai:
       api-key: ${OPENAI_API_KEY}
+      max-retries: 2
+      timeout: 20s
       embedding:
         options:
           model: text-embedding-3-small   # pinned: the library default is an older model with compressed scores

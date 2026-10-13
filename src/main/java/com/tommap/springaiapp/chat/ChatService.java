@@ -13,6 +13,7 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.TimeoutException;
 import java.util.function.IntSupplier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -48,6 +49,11 @@ class ChatService {
     }
 
     Flux<ChatEvent> stream(AuthenticatedUser user, UUID conversationId, String message) {
+        if (usage.exhausted()) {
+            log.warn("Chat turn refused: budget of {} USD is spent", usage.limitUsd());
+            return Flux.just(new ChatEvent.Error("The demo budget ($%s) is spent, so the model is paused. Raise kefir.budget.limit-usd to continue."
+                    .formatted(usage.limitUsd().stripTrailingZeros().toPlainString())));
+        }
         String traceId = UUID.randomUUID().toString();
         traces.begin(traceId);
         long startNanos = System.nanoTime();
@@ -74,8 +80,16 @@ class ChatService {
                 .onErrorResume(error -> {
                     traces.finish(traceId);
                     log.warn("Chat turn failed: {}", error.getClass().getSimpleName());
-                    return Flux.just(new ChatEvent.Error("The model is unavailable right now. Please try again shortly."));
+                    return Flux.just(new ChatEvent.Error(errorMessage(error)));
                 });
+    }
+
+    /** What the user is told; the cause stays in the log, since provider errors can carry request details. */
+    static String errorMessage(Throwable error) {
+        if (error instanceof TimeoutException) {
+            return "The model did not answer within " + TURN_TIMEOUT.toSeconds() + " seconds. Please try again.";
+        }
+        return "The model is unavailable right now. Please try again shortly.";
     }
 
     private int toolStepCount(String traceId) {

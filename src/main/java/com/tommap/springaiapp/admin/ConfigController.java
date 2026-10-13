@@ -23,12 +23,10 @@ class ConfigController {
     private final UsageLedger usage;
     private final BigDecimal inputPerMtok;
     private final BigDecimal outputPerMtok;
-    private final BigDecimal budgetLimitUsd;
 
     ConfigController(Environment environment, SemanticCache cache, KnowledgeAdvisor rag, QueryRouter router, UsageLedger usage,
                      @Value("${kefir.pricing.input-per-mtok}") BigDecimal inputPerMtok,
-                     @Value("${kefir.pricing.output-per-mtok}") BigDecimal outputPerMtok,
-                     @Value("${kefir.budget.limit-usd}") BigDecimal budgetLimitUsd) {
+                     @Value("${kefir.pricing.output-per-mtok}") BigDecimal outputPerMtok) {
         this.environment = environment;
         this.cache = cache;
         this.rag = rag;
@@ -36,7 +34,6 @@ class ConfigController {
         this.usage = usage;
         this.inputPerMtok = inputPerMtok;
         this.outputPerMtok = outputPerMtok;
-        this.budgetLimitUsd = budgetLimitUsd;
     }
 
     @GetMapping
@@ -45,7 +42,7 @@ class ConfigController {
         return new ConfigView(
                 environment.getProperty("spring.ai.anthropic.chat.options.model", "mock"),
                 new Pricing(inputPerMtok, outputPerMtok),
-                new Budget(usage.totalUsd(), budgetLimitUsd),
+                new Budget(usage.totalUsd(), usage.limitUsd()),
                 new DemoService.Thresholds(cache.threshold(), rag.threshold(), router.threshold()),
                 profiles.length == 0 ? "mock" : String.join(",", profiles));
     }
