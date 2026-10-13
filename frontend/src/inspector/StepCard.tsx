@@ -1,4 +1,5 @@
-import type { StepKind, TraceStep } from "../api/chat";
+import type { RagDetail, StepKind, TraceStep } from "../api/chat";
+import { sourceLabel } from "../chat/sources";
 import { formatMs } from "./format";
 import { HOW_SPRING_AI_DOES_IT } from "./howSpringAiDoesIt";
 
@@ -31,7 +32,34 @@ function StepBody({ step }: { step: TraceStep }) {
       </>
     );
   }
+  if (step.kind === "rag") {
+    return <RagBody detail={d as unknown as RagDetail} />;
+  }
   return null;
+}
+
+function RagBody({ detail }: { detail: RagDetail }) {
+  const { chunks, threshold, topK } = detail;
+  return (
+    <>
+      <p>
+        <b>{chunks.length}</b> chunk(s) added to the prompt · top-k <b>{topK}</b> · threshold <b>{threshold.toFixed(2)}</b>
+      </p>
+      {chunks.length === 0 && (
+        <span className="note">No chunk reached the threshold, so the model got no knowledge for this message.</span>
+      )}
+      {chunks.map((chunk, i) => (
+        <div className="chunk" key={i}>
+          <q title={chunk.text}>{chunk.text}</q>
+          <span className="score">{chunk.score.toFixed(2)}</span>
+          <small>{sourceLabel(chunk)}</small>
+          <div className="bar">
+            <i style={{ width: `${Math.round(Math.min(Math.max(chunk.score, 0), 1) * 100)}%` }} />
+          </div>
+        </div>
+      ))}
+    </>
+  );
 }
 
 export function StepCard({ step, totalMs }: { step: TraceStep; totalMs: number }) {

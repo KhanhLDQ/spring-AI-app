@@ -4,6 +4,7 @@ import { fetchProducts } from "../api/products";
 import { usePolling } from "../api/usePolling";
 import { useAuth } from "../auth/AuthContext";
 import { OrderCard } from "../chat/OrderCard";
+import { SourceChips } from "../chat/SourceChips";
 import { ProductCards } from "../chat/ProductCards";
 import { ToolChips } from "../chat/ToolChips";
 import { toolCalls } from "../chat/toolSteps";
@@ -97,6 +98,7 @@ export function ChatPage({ onOpenOrders }: { onOpenOrders: () => void }) {
                   <div className="b-main">
                     <ToolChips calls={toolCalls(turn.steps)} />
                     {turn.answer && <div className="b-text">{turn.answer}</div>}
+                    {turn.status === "done" && <SourceChips steps={turn.steps} />}
                     {turn.status === "streaming" && !turn.answer && (
                       <span className="dots" aria-label="Thinking">
                         <i /><i /><i />
