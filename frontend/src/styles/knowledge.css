@@ -20,3 +20,11 @@
 .etl-steps .bar { background: var(--surface2); }
 .etl-steps .bar i { background: var(--accent); }
 @media (max-width: 900px) { .two { grid-template-columns: minmax(0, 1fr); } }
+.chunking { display: flex; flex-direction: column; align-items: flex-start; gap: .7rem; padding: .9rem 1rem 1rem; }
+.chunking p { margin: 0; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: .55rem; overflow: hidden; }
+.seg button { padding: .3rem .85rem; background: var(--bg); border: 0; border-right: 1px solid var(--line); font: 500 .85rem var(--font-mono); }
+.seg button:last-child { border-right: 0; }
+.seg button.on { background: var(--accent); color: var(--accent-ink); }
+.seg button:disabled { opacity: .6; cursor: default; }
+.stack { display: flex; flex-direction: column; gap: 1.3rem; min-width: 0; }

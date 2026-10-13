@@ -4,6 +4,7 @@ import { ApiError, UnauthorizedError } from "../api/http";
 import { usePolling } from "../api/usePolling";
 import { useAuth } from "../auth/AuthContext";
 import { formatWhen } from "../orders/format";
+import { ChunkingPanel } from "./ChunkingPanel";
 import { EtlPipeline } from "./EtlPipeline";
 import { RetrievalTest } from "./RetrievalTest";
 
@@ -149,7 +150,17 @@ export function KnowledgePage() {
             </table>
           </div>
         </section>
-        <RetrievalTest token={token} onUnauthorized={logout} />
+        <div className="stack">
+          <RetrievalTest token={token} onUnauthorized={logout} />
+          <ChunkingPanel
+            token={token}
+            onRebuilt={() => {
+              setLastUpload(null);
+              reload();
+            }}
+            onUnauthorized={logout}
+          />
+        </div>
       </div>
     </div>
   );
