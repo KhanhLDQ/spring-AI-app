@@ -1,7 +1,13 @@
 import type { RagChunk, RagDetail, TraceStep } from "../api/chat";
 
+/** Chunks the model was given; a cached answer carries the chunks of the answer it replays instead. */
 export const ragChunks = (steps: TraceStep[]): RagChunk[] =>
-  steps.filter((step) => step.kind === "rag").flatMap((step) => (step.detail as unknown as RagDetail).chunks ?? []);
+  steps.flatMap((step) => {
+    if (step.kind === "rag") {
+      return (step.detail as unknown as RagDetail).chunks ?? [];
+    }
+    return step.kind === "cache" ? ((step.detail.sources as RagChunk[] | undefined) ?? []) : [];
+  });
 
 export const sourceLabel = (chunk: RagChunk) => (chunk.page ? `${chunk.source} · p.${chunk.page}` : chunk.source);
 

@@ -32,6 +32,36 @@ function StepBody({ step }: { step: TraceStep }) {
       </>
     );
   }
+  if (step.kind === "cache") {
+    const score = Number(d.score ?? 0);
+    const threshold = Number(d.threshold ?? 0);
+    return d.hit ? (
+      <>
+        <p>
+          Similarity <b>{score.toFixed(2)}</b> ≥ threshold <b>{threshold.toFixed(2)}</b>. Answered without calling the model.
+        </p>
+        <span className="note ok">Matched: {String(d.matched)}</span>
+      </>
+    ) : (
+      <p>
+        {d.matched ? (
+          <>
+            Closest cached question scored <b>{score.toFixed(2)}</b> &lt; threshold <b>{threshold.toFixed(2)}</b>. The chain continues.
+          </>
+        ) : (
+          "Nothing cached for this role is close enough. The chain continues."
+        )}
+      </p>
+    );
+  }
+  if (step.kind === "cachewrite") {
+    return (
+      <p>
+        {d.stored ? "Stored for the next person who asks." : "Not stored"}
+        {!d.stored && d.reason ? `: ${String(d.reason)}.` : ""}
+      </p>
+    );
+  }
   if (step.kind === "memory") {
     const loaded = Number(d.messagesLoaded ?? 0);
     return (
