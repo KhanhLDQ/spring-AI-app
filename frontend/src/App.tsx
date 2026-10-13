@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useAuth } from "./auth/AuthContext";
+import { KnowledgePage } from "./knowledge/KnowledgePage";
 import { AppShell, type View } from "./layout/AppShell";
 import { AdminOrdersPage } from "./orders/AdminOrdersPage";
 import { MyOrdersPage } from "./orders/MyOrdersPage";
@@ -19,6 +20,7 @@ function Workspace() {
       </div>
       {view === "orders" && <MyOrdersPage />}
       {view === "admin-orders" && isAdmin && <AdminOrdersPage />}
+      {view === "knowledge" && isAdmin && <KnowledgePage />}
     </AppShell>
   );
 }

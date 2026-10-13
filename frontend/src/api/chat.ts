@@ -14,6 +14,20 @@ export interface TraceStep {
   detail: Record<string, unknown>;
 }
 
+/** One retrieved chunk as the `rag` step reports it; page is null for Markdown sources. */
+export interface RagChunk {
+  source: string;
+  page: number | null;
+  score: number;
+  text: string;
+}
+
+export interface RagDetail {
+  chunks: RagChunk[];
+  threshold: number;
+  topK: number;
+}
+
 export interface TurnStats {
   ms: number;
   tokensIn: number;
