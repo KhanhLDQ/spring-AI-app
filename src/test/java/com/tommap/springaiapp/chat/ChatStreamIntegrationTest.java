@@ -44,8 +44,9 @@ class ChatStreamIntegrationTest {
         assertThat(events.indexOf("step")).isGreaterThan(events.lastIndexOf("token") - 1);
         assertThat(reply.answer()).contains("trợ lý Kefir");
 
-        var modelStep = reply.data("step").getFirst();
-        assertThat(modelStep.get("kind").asString()).isEqualTo("model");
+        assertThat(reply.data("step").stream().map(step -> step.get("kind").asString()))
+                .containsExactly("rag", "model");
+        var modelStep = reply.data("step").getLast();
         assertThat(modelStep.get("detail").get("tokensIn").asInt()).isPositive();
 
         var done = reply.data("done").getFirst();

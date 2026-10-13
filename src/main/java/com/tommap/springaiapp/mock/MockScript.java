@@ -1,8 +1,12 @@
 package com.tommap.springaiapp.mock;
 
+import com.tommap.springaiapp.knowledge.RagPrompt;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.springframework.ai.chat.messages.AssistantMessage.ToolCall;
@@ -14,8 +18,8 @@ import tools.jackson.databind.json.JsonMapper;
 
 /**
  * Scripted answers keyed by what the user says, including the tool calls a real model would choose. A scripted
- * answer follows the language of the question, like the real model; extended as features that need scripted
- * behaviour (RAG) land.
+ * answer follows the language of the question, like the real model. Knowledge answers are extractive: the best
+ * matching line of the retrieved context, or "I don't know" when retrieval found nothing.
  */
 final class MockScript {
 
@@ -36,6 +40,7 @@ final class MockScript {
     }
 
     private static final JsonMapper JSON = JsonMapper.builder().build();
+    private static final Pattern NON_ASCII = Pattern.compile("[^\\x00-\\x7F]");
     private static final String FALLBACK = "This is a simulated answer (mock mode, no real model call).";
     private static final Pattern CANCEL = Pattern.compile("(?:cancel|huỷ|hủy)\\s+(?:order|đơn)?\\s*#?(\\d+)");
     private static final Pattern CHANGE = Pattern.compile("(?:change|update)\\s+order\\s+#?(\\d+)\\s+to\\s+(\\d+)");
@@ -56,7 +61,8 @@ final class MockScript {
         if (last instanceof ToolResponseMessage toolResults) {
             return Reply.text(afterTools(toolResults));
         }
-        return reply(lastUserText(conversation));
+        String message = lastUserText(conversation);
+        return reply(RagPrompt.questionOf(message), RagPrompt.contextOf(message));
     }
 
     private static String lastUserText(List<Message> conversation) {
@@ -68,7 +74,7 @@ final class MockScript {
         return "";
     }
 
-    private static Reply reply(String question) {
+    private static Reply reply(String question, Optional<String> context) {
         String q = question == null ? "" : question.toLowerCase(Locale.ROOT);
         Matcher cancel = CANCEL.matcher(q);
         if (cancel.find()) {
@@ -105,7 +111,53 @@ final class MockScript {
         if (GREETING_EN.matcher(q).find()) {
             return Reply.text("Hello! I'm the Kefir assistant (mock mode). Ask me about products or place an order.");
         }
-        return Reply.text(FALLBACK);
+        return context.map(chunks -> Reply.text(answerFrom(chunks, question))).orElseGet(() -> Reply.text(FALLBACK));
+    }
+
+    /** Quotes the two context paragraphs that share the most words with the question, like a very literal reader. */
+    private static String answerFrom(String context, String question) {
+        List<String> questionWords = words(question);
+        List<String> best = paragraphs(context).stream()
+                .filter(paragraph -> overlap(paragraph, questionWords) > 0)
+                .sorted(Comparator.comparingLong((String paragraph) -> overlap(paragraph, questionWords)).reversed())
+                .limit(2).toList();
+        if (!best.isEmpty()) {
+            return String.join("\n\n", best);
+        }
+        return NON_ASCII.matcher(question).find()
+                ? "Xin lỗi, mình không có thông tin về điều này."
+                : "Sorry, I don't have that information.";
+    }
+
+    /** Blank lines and Markdown headings separate paragraphs; the headings themselves are not quoted. */
+    private static List<String> paragraphs(String context) {
+        List<String> paragraphs = new ArrayList<>();
+        StringBuilder current = new StringBuilder();
+        for (String line : context.lines().map(String::strip).toList()) {
+            if (line.isEmpty() || line.startsWith("#")) {
+                flush(paragraphs, current);
+            } else {
+                current.append(current.isEmpty() ? "" : "\n").append(line);
+            }
+        }
+        flush(paragraphs, current);
+        return paragraphs;
+    }
+
+    private static void flush(List<String> paragraphs, StringBuilder current) {
+        if (!current.isEmpty()) {
+            paragraphs.add(current.toString());
+            current.setLength(0);
+        }
+    }
+
+    private static long overlap(String paragraph, List<String> questionWords) {
+        return words(paragraph).stream().distinct().filter(questionWords::contains).count();
+    }
+
+    private static List<String> words(String text) {
+        return List.of(text.toLowerCase(Locale.ROOT).split("[^\\p{L}\\p{N}]+")).stream()
+                .filter(word -> word.length() >= 3).toList();
     }
 
     private static String skuFor(String productWords) {

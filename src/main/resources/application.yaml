@@ -37,6 +37,9 @@ kefir:
     max-pages: 50
     chunk-tokens: 400
     seed-on-start: true
+    rag:
+      top-k: 3
+      similarity-threshold: 0.50
   jwt:
     signing-key: ${JWT_SIGNING_KEY:}
     ttl: 24h

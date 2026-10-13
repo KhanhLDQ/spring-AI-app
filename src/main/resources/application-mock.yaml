@@ -3,3 +3,9 @@ spring:
     model:
       chat: none
       embedding: none
+
+kefir:
+  knowledge:
+    rag:
+      # The mock embedding compares words, so even a good match scores far below text-embedding-3-small.
+      similarity-threshold: 0.25

@@ -1,5 +1,6 @@
 package com.tommap.springaiapp.chat;
 
+import com.tommap.springaiapp.knowledge.KnowledgeAdvisor;
 import io.micrometer.observation.ObservationRegistry;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.ToolCallingAdvisor;
@@ -18,8 +19,10 @@ class ChatClientConfiguration {
      */
     @Bean
     ChatClient chatClient(ChatModel chatModel, ObservationRegistry observationRegistry,
-                          ToolCallingManager toolCallingManager) {
+                          ToolCallingManager toolCallingManager, KnowledgeAdvisor knowledgeAdvisor) {
         return ChatClient.builder(chatModel, observationRegistry, null, null,
-                ToolCallingAdvisor.builder().toolCallingManager(toolCallingManager)).build();
+                        ToolCallingAdvisor.builder().toolCallingManager(toolCallingManager))
+                .defaultAdvisors(knowledgeAdvisor)
+                .build();
     }
 }
