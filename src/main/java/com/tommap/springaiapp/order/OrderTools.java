@@ -15,9 +15,11 @@ import org.springframework.stereotype.Component;
 public class OrderTools {
 
     private final OrderService orders;
+    private final RevenueService revenue;
 
-    OrderTools(OrderService orders) {
+    OrderTools(OrderService orders, RevenueService revenue) {
         this.orders = orders;
+        this.revenue = revenue;
     }
 
     @Tool(description = """
@@ -67,6 +69,19 @@ public class OrderTools {
             ToolContext context) {
         ToolCaller.from(context).requireAdmin("approve orders");
         return orders.approve(orderId);
+    }
+
+    @Tool(description = """
+            ADMIN ONLY. Revenue of approved orders between two dates (both included), with the order and bottle \
+            counts, the best selling products, and the previous period of the same length for comparison. \
+            Amounts are in VND. Without dates it covers the last 60 days.""")
+    public RevenueSummary getRevenueSummary(
+            @ToolParam(description = "First day as YYYY-MM-DD; leave empty for 60 days before toDate", required = false)
+            String fromDate,
+            @ToolParam(description = "Last day as YYYY-MM-DD; leave empty for today", required = false) String toDate,
+            ToolContext context) {
+        ToolCaller.from(context).requireAdmin("see revenue");
+        return revenue.summarize(fromDate, toDate);
     }
 
     private static OrderStatus parseStatus(String status) {

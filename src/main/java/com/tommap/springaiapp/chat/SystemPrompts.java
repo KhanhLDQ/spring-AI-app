@@ -1,6 +1,7 @@
 package com.tommap.springaiapp.chat;
 
 import com.tommap.springaiapp.auth.Role;
+import java.time.LocalDate;
 
 /** Tells the bot who it is talking to; permissions are enforced inside the tools, not here. */
 final class SystemPrompts {
@@ -13,9 +14,10 @@ final class SystemPrompts {
     private SystemPrompts() {
     }
 
-    static String forRole(Role role) {
-        return role == Role.ADMIN
-                ? BASE + " You are talking to the shop administrator."
-                : BASE + " You are talking to a customer.";
+    static String forRole(Role role, LocalDate today) {
+        String audience = role == Role.ADMIN
+                ? " You are talking to the shop administrator."
+                : " You are talking to a customer.";
+        return BASE + audience + " Today is " + today + ".";
     }
 }

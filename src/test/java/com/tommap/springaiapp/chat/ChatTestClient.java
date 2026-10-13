@@ -75,7 +75,7 @@ public final class ChatTestClient {
             return data("token").stream().map(d -> d.get("text").asString()).reduce("", String::concat);
         }
 
-        List<JsonNode> toolSteps() {
+        public List<JsonNode> toolSteps() {
             return data("step").stream().filter(s -> "tool".equals(s.get("kind").asString())).toList();
         }
     }

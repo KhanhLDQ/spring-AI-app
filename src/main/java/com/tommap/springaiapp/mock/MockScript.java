@@ -123,7 +123,10 @@ final class MockScript {
         if (q.contains("my orders") || q.contains("đơn của tôi")) {
             return Reply.tool("listMyOrders", "{}");
         }
-        if (q.contains("all orders") || q.contains("revenue") || q.contains("doanh thu")) {
+        if (q.contains("revenue") || q.contains("doanh thu")) {
+            return Reply.tool("getRevenueSummary", "{}");
+        }
+        if (q.contains("all orders")) {
             return Reply.tool("listAllOrders", "{}");
         }
         if (q.contains("products") || q.contains("menu") || q.contains("sản phẩm")) {
@@ -247,6 +250,11 @@ final class MockScript {
         if (data.has("status")) {
             return "Done. Order #" + data.path("id").asLong() + " is " + data.path("status").asString()
                     + ", total " + data.path("totalAmount").asLong() + " VND.";
+        }
+        if (data.has("revenueVnd")) {
+            return "Revenue from " + data.path("from").asString() + " to " + data.path("to").asString() + " is "
+                    + data.path("revenueVnd").asLong() + " VND from " + data.path("orders").asInt()
+                    + " approved order(s).";
         }
         return "Here is what I found: " + data;
     }

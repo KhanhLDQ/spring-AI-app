@@ -5,10 +5,12 @@ import com.tommap.springaiapp.auth.ToolCaller;
 import com.tommap.springaiapp.cache.SemanticCacheAdvisor;
 import com.tommap.springaiapp.catalog.CatalogTools;
 import com.tommap.springaiapp.order.OrderTools;
+import com.tommap.springaiapp.order.ShopTime;
 import com.tommap.springaiapp.trace.TraceCollector;
 import com.tommap.springaiapp.trace.TraceStep;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.Clock;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
@@ -37,15 +39,17 @@ class ChatService {
     private final CatalogTools catalogTools;
     private final OrderTools orderTools;
     private final UsageLedger usage;
+    private final Clock clock;
 
     ChatService(ChatClient chatClient, TraceCollector traces, PricingProperties pricing, CatalogTools catalogTools,
-                OrderTools orderTools, UsageLedger usage) {
+                OrderTools orderTools, UsageLedger usage, Clock clock) {
         this.chatClient = chatClient;
         this.traces = traces;
         this.pricing = pricing;
         this.catalogTools = catalogTools;
         this.orderTools = orderTools;
         this.usage = usage;
+        this.clock = clock;
     }
 
     Flux<ChatEvent> stream(AuthenticatedUser user, UUID conversationId, String message) {
@@ -63,7 +67,7 @@ class ChatService {
         Map<String, Object> toolContext = ToolCaller.contextFor(user, memoryKey);
 
         ChatClient.ChatClientRequestSpec prompt = chatClient.prompt()
-                .system(SystemPrompts.forRole(user.role()))
+                .system(SystemPrompts.forRole(user.role(), ShopTime.today(clock)))
                 .user(message)
                 .advisors(a -> a.param(TraceCollector.TRACE_ID_PARAM, traceId).param(ChatMemory.CONVERSATION_ID, memoryKey)
                         .param(SemanticCacheAdvisor.ROLE_PARAM, user.role().name()))
