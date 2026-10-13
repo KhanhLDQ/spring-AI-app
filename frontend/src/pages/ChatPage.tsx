@@ -6,6 +6,7 @@ import { usePolling } from "../api/usePolling";
 import { useAuth } from "../auth/AuthContext";
 import { CacheChip } from "../chat/CacheChip";
 import { OrderCard } from "../chat/OrderCard";
+import { ScriptBar } from "../chat/ScriptBar";
 import { RevenueCard } from "../chat/RevenueCard";
 import { SourceChips } from "../chat/SourceChips";
 import { ProductCards } from "../chat/ProductCards";
@@ -26,6 +27,7 @@ export function ChatPage({ onOpenOrders }: { onOpenOrders: () => void }) {
   const [draft, setDraft] = useState("");
   const end = useRef<HTMLDivElement>(null);
   const [selected, setSelected] = useState(0);
+  const [usedScripts, setUsedScripts] = useState<ReadonlySet<string>>(new Set());
 
   // A new turn pulls the Inspector to it; the user can then step back through earlier turns.
   useEffect(() => {
@@ -64,6 +66,14 @@ export function ChatPage({ onOpenOrders }: { onOpenOrders: () => void }) {
     }
     setDraft("");
     void send(question);
+  }
+
+  function runScript(message: string) {
+    if (busy || !ready) {
+      return;
+    }
+    setUsedScripts((used) => new Set(used).add(message));
+    void send(message);
   }
 
   return (
@@ -133,6 +143,8 @@ export function ChatPage({ onOpenOrders }: { onOpenOrders: () => void }) {
             <div ref={end} />
           </div>
         </div>
+
+        <ScriptBar role={session!.user.role} disabled={busy || !ready} used={usedScripts} onRun={runScript} />
 
         <form className="composer" onSubmit={submit}>
           <div className="composer-in">
