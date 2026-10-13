@@ -25,6 +25,13 @@ import reactor.core.scheduler.Scheduler;
  */
 public final class KnowledgeAdvisor implements BaseAdvisor {
 
+    /**
+     * Added to order requests, which skip retrieval. Without it the small model sometimes answers a follow-up like
+     * "cancel it" with a made-up confirmation instead of calling the tool.
+     */
+    static final String TOOL_REMINDER = "\n\n(Reminder: use your tools for this request, and say it is done "
+            + "only if a tool succeeded in this turn.)";
+
     private final VectorStore store;
     private final TraceCollector traces;
     private final QueryRouter router;
@@ -65,7 +72,8 @@ public final class KnowledgeAdvisor implements BaseAdvisor {
             traces.record(traceId, routeStep(decision, startMs, (routeEnd - routeStart) / 1_000_000));
         }
         if (decision.skipRetrieval()) {
-            return request;
+            return request.mutate().prompt(request.prompt().augmentUserMessage(message ->
+                    message.mutate().text(message.getText() + TOOL_REMINDER).build())).build();
         }
         long start = System.nanoTime();
         ChatClientRequest augmented = retrieval.before(request, chain);

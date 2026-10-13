@@ -3,13 +3,13 @@ spring:
     anthropic:
       chat:
         options:
-          model: claude-haiku-4-5
-          max-tokens: 1024
+          # Haiku 4.5 invented order confirmations without calling the tool in longer chats; Sonnet 5.5 did not.
+          model: claude-sonnet-5-5
+          max-tokens: 1500
 
 kefir:
+  model:
+    effort: LOW
   cache:
     # Measured with text-embedding-3-small: close paraphrases score 0.80-0.82, same-topic different questions 0.64-0.69.
     similarity-threshold: 0.75
-  pricing:
-    input-per-mtok: 1
-    output-per-mtok: 5

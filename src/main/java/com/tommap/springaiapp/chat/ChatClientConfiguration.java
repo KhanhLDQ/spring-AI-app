@@ -3,7 +3,10 @@ package com.tommap.springaiapp.chat;
 import com.tommap.springaiapp.cache.SemanticCacheAdvisor;
 import com.tommap.springaiapp.knowledge.KnowledgeAdvisor;
 import com.tommap.springaiapp.trace.TraceCollector;
+import com.anthropic.models.messages.OutputConfig;
 import io.micrometer.observation.ObservationRegistry;
+import java.util.Locale;
+import org.springframework.ai.anthropic.AnthropicChatOptions;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
 import org.springframework.ai.chat.client.advisor.ToolCallingAdvisor;
@@ -13,6 +16,7 @@ import org.springframework.ai.chat.memory.MessageWindowChatMemory;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.model.tool.ToolCallingManager;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -40,10 +44,16 @@ class ChatClientConfiguration {
     @Bean
     ChatClient chatClient(ChatModel chatModel, ObservationRegistry observationRegistry,
                           ToolCallingManager toolCallingManager, SemanticCacheAdvisor cacheAdvisor,
-                          ConversationMemoryAdvisor memoryAdvisor, KnowledgeAdvisor knowledgeAdvisor) {
-        return ChatClient.builder(chatModel, observationRegistry, null, null,
+                          ConversationMemoryAdvisor memoryAdvisor, KnowledgeAdvisor knowledgeAdvisor,
+                          @Value("${kefir.model.effort:}") String effort) {
+        ChatClient.Builder builder = ChatClient.builder(chatModel, observationRegistry, null, null,
                         ToolCallingAdvisor.builder().toolCallingManager(toolCallingManager))
-                .defaultAdvisors(cacheAdvisor, memoryAdvisor, knowledgeAdvisor)
-                .build();
+                .defaultAdvisors(cacheAdvisor, memoryAdvisor, knowledgeAdvisor);
+        // Sonnet 5.5 thinks at "high" effort by default, which is slow and billed as output; a shop assistant does not need it.
+        if (!effort.isBlank() && chatModel.getOptions() instanceof AnthropicChatOptions options) {
+            builder.defaultOptions(options.mutate()
+                    .effort(OutputConfig.Effort.Companion.of(effort.toLowerCase(Locale.ROOT))));
+        }
+        return builder.build();
     }
 }
