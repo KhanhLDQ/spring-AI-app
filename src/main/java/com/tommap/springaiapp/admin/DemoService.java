@@ -44,6 +44,7 @@ class DemoService {
     void reset() {
         orders.reseed();
         history.clearAll();
+        knowledge.resetChunkSize();
         knowledge.reseed();
         cache.clear();
         cache.threshold(defaultCacheThreshold);

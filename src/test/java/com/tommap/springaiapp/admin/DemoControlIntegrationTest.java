@@ -58,6 +58,8 @@ class DemoControlIntegrationTest {
     void resetBringsEveryPieceOfDemoStateBack() throws Exception {
         mvc.perform(put("/api/admin/demo/threshold").header("Authorization", admin)
                 .contentType(MediaType.APPLICATION_JSON).content("{\"cache\":0.99,\"rag\":0.9,\"route\":0.95}"));
+        mvc.perform(put("/api/admin/knowledge/chunking").header("Authorization", admin)
+                .contentType(MediaType.APPLICATION_JSON).content("{\"chunkTokens\":100}"));
         jdbc.update("DELETE FROM orders");
         chat(user, FAQ);
         post("/api/admin/demo/clear-vectors", admin);
@@ -72,6 +74,8 @@ class DemoControlIntegrationTest {
                 .andExpect(jsonPath("$.thresholds.cache", is(0.85)))
                 .andExpect(jsonPath("$.thresholds.rag", is(0.25)))
                 .andExpect(jsonPath("$.thresholds.route", is(0.30)));
+        mvc.perform(get("/api/admin/knowledge/chunking").header("Authorization", admin))
+                .andExpect(jsonPath("$.chunkTokens", is(400)));
     }
 
     @Test

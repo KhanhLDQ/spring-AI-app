@@ -2,7 +2,6 @@ package com.tommap.springaiapp.knowledge;
 
 import com.tommap.springaiapp.trace.TraceCollector;
 import org.springframework.ai.embedding.EmbeddingModel;
-import org.springframework.ai.transformer.splitter.TokenTextSplitter;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.ai.vectorstore.pgvector.PgVectorStore;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -47,10 +46,5 @@ class KnowledgeConfiguration {
     QueryRouter queryRouter(EmbeddingModel embeddingModel, KnowledgeProperties properties) {
         KnowledgeProperties.Router router = properties.router();
         return QueryRouter.withBundledExamples(embeddingModel, router.similarityThreshold(), router.margin());
-    }
-
-    @Bean
-    TokenTextSplitter tokenTextSplitter(KnowledgeProperties properties) {
-        return TokenTextSplitter.builder().withChunkSize(properties.chunkTokens()).build();
     }
 }

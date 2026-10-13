@@ -31,22 +31,24 @@ public class KnowledgeService {
 
     private final VectorStore store;
     private final KnowledgeReader reader;
-    private final TokenTextSplitter splitter;
     private final KnowledgeDocumentRepository docs;
     private final JdbcTemplate jdbc;
     private final Clock clock;
     private final SemanticCache cache;
+    private final int defaultChunkTokens;
+    private volatile int chunkTokens;
 
     KnowledgeService(@Qualifier(KnowledgeConfiguration.STORE) VectorStore store, KnowledgeReader reader,
-                     TokenTextSplitter splitter, KnowledgeDocumentRepository docs, JdbcTemplate jdbc, Clock clock,
-                     SemanticCache cache) {
+                     KnowledgeDocumentRepository docs, JdbcTemplate jdbc, Clock clock, SemanticCache cache,
+                     KnowledgeProperties properties) {
         this.store = store;
         this.reader = reader;
-        this.splitter = splitter;
         this.docs = docs;
         this.jdbc = jdbc;
         this.clock = clock;
         this.cache = cache;
+        this.defaultChunkTokens = properties.chunkTokens();
+        this.chunkTokens = defaultChunkTokens;
     }
 
     /** Chunks and vectors commit together with the document row, so a failed embedding leaves nothing behind. */
@@ -61,7 +63,7 @@ public class KnowledgeService {
         long start = System.nanoTime();
         List<Document> sources = reader.read(filename, bytes);
         long readDone = System.nanoTime();
-        List<Document> chunks = splitter.apply(sources);
+        List<Document> chunks = TokenTextSplitter.builder().withChunkSize(chunkTokens).build().apply(sources);
         long splitDone = System.nanoTime();
         if (chunks.isEmpty()) {
             throw new KnowledgeRejectedException(HttpStatus.UNPROCESSABLE_CONTENT,
@@ -100,6 +102,29 @@ public class KnowledgeService {
         jdbc.execute("TRUNCATE TABLE vector_store");
         cache.clear();
         docs.deleteAllInBatch();
+    }
+
+    /** Target size of a chunk in tokens; it applies to everything ingested from now on. */
+    public int chunkTokens() {
+        return chunkTokens;
+    }
+
+    /** Changing the size only affects new chunks, so the bundled documents are loaded again to show the difference. */
+    ChunkingView rechunk(int tokens) {
+        chunkTokens = tokens;
+        reseed();
+        return chunking();
+    }
+
+    public void resetChunkSize() {
+        chunkTokens = defaultChunkTokens;
+    }
+
+    @Transactional(readOnly = true)
+    ChunkingView chunking() {
+        List<KnowledgeDocView> documents = list();
+        return new ChunkingView(chunkTokens, defaultChunkTokens, documents.size(),
+                documents.stream().mapToInt(KnowledgeDocView::chunkCount).sum());
     }
 
     /** Back to the bundled shop documents only; anything uploaded since is dropped. */

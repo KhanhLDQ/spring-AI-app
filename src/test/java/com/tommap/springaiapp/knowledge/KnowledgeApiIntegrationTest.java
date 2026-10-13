@@ -12,6 +12,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -25,6 +26,7 @@ import java.util.Comparator;
 import java.util.List;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -56,6 +58,14 @@ class KnowledgeApiIntegrationTest {
 
     private String admin;
     private String user;
+
+    @AfterEach
+    void restoreTheDefaultChunkSize() {
+        if (knowledge.chunkTokens() != 400) {
+            knowledge.resetChunkSize();
+            knowledge.reseed();
+        }
+    }
 
     @BeforeEach
     void setUp() throws Exception {
@@ -203,6 +213,37 @@ class KnowledgeApiIntegrationTest {
         List<Double> scores = JsonMapper.builder().build().readTree(body).valueStream()
                 .map(hit -> hit.get("score").asDouble()).toList();
         assertThat(scores).isSortedAccordingTo(Comparator.reverseOrder()).allMatch(score -> score > 0 && score <= 1);
+    }
+
+    @Test
+    void aSmallerChunkSizeSplitsTheBundledDocumentsIntoMoreChunks() throws Exception {
+        mvc.perform(get("/api/admin/knowledge/chunking").header("Authorization", admin))
+                .andExpect(jsonPath("$.chunkTokens", is(400)))
+                .andExpect(jsonPath("$.chunks", is(48)));
+
+        mvc.perform(put("/api/admin/knowledge/chunking").header("Authorization", admin)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"chunkTokens\":100}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.chunkTokens", is(100)))
+                .andExpect(jsonPath("$.documents", is(7)))
+                .andExpect(jsonPath("$.chunks", greaterThan(48)));
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM vector_store", Long.class)).isGreaterThan(48);
+
+        // A new upload is cut at the size in force.
+        upload("late.md", SMALL_DOC.getBytes(StandardCharsets.UTF_8)).andExpect(status().isOk());
+    }
+
+    @Test
+    void theChunkSizeIsValidatedAndAdminOnly() throws Exception {
+        for (String body : List.of("{\"chunkTokens\":10}", "{\"chunkTokens\":5000}", "{}")) {
+            mvc.perform(put("/api/admin/knowledge/chunking").header("Authorization", admin)
+                            .contentType(MediaType.APPLICATION_JSON).content(body))
+                    .andExpect(status().isBadRequest());
+        }
+        mvc.perform(put("/api/admin/knowledge/chunking").header("Authorization", user)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"chunkTokens\":100}"))
+                .andExpect(status().isForbidden());
+        assertThat(knowledge.chunkTokens()).isEqualTo(400);
     }
 
     @Test
