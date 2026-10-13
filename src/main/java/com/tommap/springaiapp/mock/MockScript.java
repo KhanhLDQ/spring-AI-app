@@ -1,5 +1,6 @@
 package com.tommap.springaiapp.mock;
 
+import com.tommap.springaiapp.chat.RevenueBriefService;
 import com.tommap.springaiapp.knowledge.RagPrompt;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -69,8 +70,29 @@ final class MockScript {
             return Reply.text(afterTools(toolResults));
         }
         String message = lastUserText(conversation);
+        if (message.startsWith(RevenueBriefService.REQUEST)) {
+            return Reply.text(brief(message));
+        }
         return reply(RagPrompt.questionOf(message), RagPrompt.contextOf(message),
                 conversation.subList(0, conversation.size() - 1));
+    }
+
+    /** A canned structured answer built from the figures in the request, in the JSON shape the converter asked for. */
+    private static String brief(String message) {
+        String revenue = number(message, "revenueVnd");
+        String orders = number(message, "orders");
+        return JSON.createObjectNode()
+                .put("headline", "Revenue brief (mock): " + revenue + " VND from " + orders + " approved order(s).")
+                .set("highlights", JSON.createArrayNode()
+                        .add("Revenue in the period: " + revenue + " VND")
+                        .add("Approved orders: " + orders))
+                .put("suggestion", "This is a simulated brief (mock mode); a real model would suggest a next step.")
+                .toString();
+    }
+
+    private static String number(String json, String field) {
+        Matcher match = Pattern.compile("\"" + field + "\":(\\d+)").matcher(json);
+        return match.find() ? match.group(1) : "0";
     }
 
     private static String lastUserText(List<Message> conversation) {

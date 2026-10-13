@@ -4,7 +4,9 @@ import com.tommap.springaiapp.trace.TraceCollector;
 import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.ai.vectorstore.pgvector.PgVectorStore;
+import java.util.concurrent.CompletableFuture;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.boot.ApplicationRunner;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -46,5 +48,11 @@ class KnowledgeConfiguration {
     QueryRouter queryRouter(EmbeddingModel embeddingModel, KnowledgeProperties properties) {
         KnowledgeProperties.Router router = properties.router();
         return QueryRouter.withBundledExamples(embeddingModel, router.similarityThreshold(), router.margin());
+    }
+
+    /** Runs in the background after start-up: the app is usable at once and the first message is not slowed. */
+    @Bean
+    ApplicationRunner routerWarmUp(QueryRouter router) {
+        return args -> CompletableFuture.runAsync(router::warmUp);
     }
 }

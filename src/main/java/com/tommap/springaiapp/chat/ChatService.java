@@ -9,7 +9,6 @@ import com.tommap.springaiapp.order.ShopTime;
 import com.tommap.springaiapp.trace.TraceCollector;
 import com.tommap.springaiapp.trace.TraceStep;
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.Clock;
 import java.time.Duration;
 import java.util.List;
@@ -30,22 +29,19 @@ import reactor.core.publisher.Flux;
 class ChatService {
 
     private static final Logger log = LoggerFactory.getLogger(ChatService.class);
-    private static final BigDecimal MILLION = BigDecimal.valueOf(1_000_000);
     private static final Duration TURN_TIMEOUT = Duration.ofSeconds(60);
 
     private final ChatClient chatClient;
     private final TraceCollector traces;
-    private final PricingProperties pricing;
     private final CatalogTools catalogTools;
     private final OrderTools orderTools;
     private final UsageLedger usage;
     private final Clock clock;
 
-    ChatService(ChatClient chatClient, TraceCollector traces, PricingProperties pricing, CatalogTools catalogTools,
+    ChatService(ChatClient chatClient, TraceCollector traces, CatalogTools catalogTools,
                 OrderTools orderTools, UsageLedger usage, Clock clock) {
         this.chatClient = chatClient;
         this.traces = traces;
-        this.pricing = pricing;
         this.catalogTools = catalogTools;
         this.orderTools = orderTools;
         this.usage = usage;
@@ -140,7 +136,7 @@ class ChatService {
         long tokensIn = sum(steps, "tokensIn");
         long tokensOut = sum(steps, "tokensOut");
         long ms = (System.nanoTime() - startNanos) / 1_000_000;
-        BigDecimal cost = cost(tokensIn, tokensOut);
+        BigDecimal cost = usage.cost(tokensIn, tokensOut);
         if (tokensIn + tokensOut > 0) {
             usage.record(tokensIn, tokensOut, cost);
         }
@@ -161,11 +157,5 @@ class ChatService {
                 .filter(Number.class::isInstance)
                 .mapToLong(v -> ((Number) v).longValue())
                 .sum();
-    }
-
-    private BigDecimal cost(long tokensIn, long tokensOut) {
-        return BigDecimal.valueOf(tokensIn).multiply(pricing.inputPerMtok())
-                .add(BigDecimal.valueOf(tokensOut).multiply(pricing.outputPerMtok()))
-                .divide(MILLION, 6, RoundingMode.HALF_UP);
     }
 }

@@ -86,7 +86,16 @@ public final class QueryRouter {
         }
     }
 
-    /** Embedded on first use, so starting the app never calls the embedding API. */
+    /** Embeds the examples ahead of the first message, so that turn does not pay for it; a failure is retried then. */
+    void warmUp() {
+        try {
+            ensureExamples();
+        } catch (RuntimeException e) {
+            log.warn("Router warm-up failed, the first message will retry: {}", e.getMessage());
+        }
+    }
+
+    /** Embedded on first use (or by warmUp), so starting the app itself never waits on the embedding API. */
     private void ensureExamples() {
         if (knowledgeVectors != null) {
             return;
