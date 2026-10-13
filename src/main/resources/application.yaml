@@ -20,6 +20,9 @@ spring:
       api-key: ${ANTHROPIC_API_KEY}
     openai:
       api-key: ${OPENAI_API_KEY}
+      embedding:
+        options:
+          model: text-embedding-3-small   # pinned: the library default is an older model with compressed scores
   datasource:
     url: ${DB_URL:jdbc:postgresql://localhost:5432/kefir}
     username: ${DB_USERNAME:kefir}

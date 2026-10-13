@@ -7,6 +7,9 @@ spring:
           max-tokens: 1024
 
 kefir:
+  cache:
+    # Measured with text-embedding-3-small: close paraphrases score 0.80-0.82, same-topic different questions 0.64-0.69.
+    similarity-threshold: 0.75
   budget:
     limit-usd: 3
   pricing:
