@@ -18,3 +18,4 @@ HELP.md
 # Frontend
 node_modules/
 frontend/dist/
+frontend/node/
