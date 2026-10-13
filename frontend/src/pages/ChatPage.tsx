@@ -6,6 +6,7 @@ import { usePolling } from "../api/usePolling";
 import { useAuth } from "../auth/AuthContext";
 import { CacheChip } from "../chat/CacheChip";
 import { OrderCard } from "../chat/OrderCard";
+import { RevenueCard } from "../chat/RevenueCard";
 import { SourceChips } from "../chat/SourceChips";
 import { ProductCards } from "../chat/ProductCards";
 import { ToolChips } from "../chat/ToolChips";
@@ -113,6 +114,7 @@ export function ChatPage({ onOpenOrders }: { onOpenOrders: () => void }) {
                       return (
                         <Fragment key={i}>
                           {order && <OrderCard order={order} onOpenOrders={onOpenOrders} />}
+                          {call.revenue && <RevenueCard range={call.revenue} />}
                           {call.listsProducts && products && <ProductCards products={products} />}
                           {looked.length > 0 && <ProductCards products={looked} />}
                         </Fragment>

@@ -17,3 +17,7 @@
 .product-body b { font: 600 .88rem/1.25 var(--font-body); }
 .product-body small { color: var(--muted); font-size: .72rem; }
 .product-body small.out { color: var(--bad); }
+.rev-total { font: 700 1.5rem var(--font-display); font-variant-numeric: tabular-nums; }
+.rev-top { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: .25rem; border-top: 1px solid var(--line); padding-top: .5rem; font-size: .85rem; }
+.rev-top li { display: flex; justify-content: space-between; gap: .8rem; }
+.rev-top .num { color: var(--muted); font-variant-numeric: tabular-nums; }

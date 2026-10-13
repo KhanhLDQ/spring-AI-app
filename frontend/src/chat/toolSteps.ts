@@ -11,6 +11,8 @@ export interface ToolCall {
   /** The product a getProduct call looked up; listProducts shows the whole menu instead. */
   productSku?: string;
   listsProducts: boolean;
+  /** The date range a successful getRevenueSummary call used; the card reloads the same range. */
+  revenue?: { from?: string; to?: string };
 }
 
 function summarizeArgs(raw: unknown): string {
@@ -18,6 +20,15 @@ function summarizeArgs(raw: unknown): string {
     return Object.values(JSON.parse(String(raw ?? "{}"))).join(", ");
   } catch {
     return String(raw ?? "");
+  }
+}
+
+function revenueRange(raw: unknown): { from?: string; to?: string } {
+  try {
+    const args = JSON.parse(String(raw ?? "{}"));
+    return { from: args.fromDate || undefined, to: args.toDate || undefined };
+  } catch {
+    return {};
   }
 }
 
@@ -39,6 +50,7 @@ export function toolCalls(steps: TraceStep[]): ToolCall[] {
         orderId: id ? Number(id) : undefined,
         productSku: sku,
         listsProducts: name === "listProducts" && !failed,
+        revenue: name === "getRevenueSummary" && !failed ? revenueRange(step.detail.args) : undefined,
       };
     });
 }
