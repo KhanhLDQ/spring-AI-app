@@ -63,7 +63,7 @@ public final class ChatTestClient {
             return body.lines().filter(l -> l.startsWith("event:")).map(l -> l.substring(6).trim()).toList();
         }
 
-        List<JsonNode> data(String event) {
+        public List<JsonNode> data(String event) {
             List<String> lines = body.lines().toList();
             return IntStream.range(0, lines.size())
                     .filter(i -> lines.get(i).equals("event:" + event))
@@ -71,7 +71,7 @@ public final class ChatTestClient {
                     .toList();
         }
 
-        String answer() {
+        public String answer() {
             return data("token").stream().map(d -> d.get("text").asString()).reduce("", String::concat);
         }
 

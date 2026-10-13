@@ -16,6 +16,8 @@
     <properties>
         <java.version>25</java.version>
         <spring-ai.version>2.0.1</spring-ai.version>
+        <!-- Tests tagged "live" call the real models and cost money; run them with -Dexcluded.test.groups=none -->
+        <excluded.test.groups>live</excluded.test.groups>
     </properties>
     <dependencyManagement>
         <dependencies>
@@ -154,6 +156,13 @@
                         </configuration>
                     </execution>
                 </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <excludedGroups>${excluded.test.groups}</excludedGroups>
+                </configuration>
             </plugin>
             <plugin>
                 <groupId>org.springframework.boot</groupId>
