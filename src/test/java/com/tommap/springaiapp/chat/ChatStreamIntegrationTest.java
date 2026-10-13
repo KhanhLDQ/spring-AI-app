@@ -45,8 +45,8 @@ class ChatStreamIntegrationTest {
         assertThat(reply.answer()).contains("trợ lý Kefir");
 
         assertThat(reply.data("step").stream().map(step -> step.get("kind").asString()))
-                .containsExactly("memory", "rag", "model");
-        var modelStep = reply.data("step").getLast();
+                .containsExactly("cache", "memory", "rag", "model", "cachewrite");
+        var modelStep = reply.data("step").get(3);
         assertThat(modelStep.get("detail").get("tokensIn").asInt()).isPositive();
 
         var done = reply.data("done").getFirst();

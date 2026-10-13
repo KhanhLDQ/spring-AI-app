@@ -37,6 +37,9 @@ spring:
     open-in-view: false
 
 kefir:
+  cache:
+    similarity-threshold: 0.85
+    ttl: 24h
   memory:
     window-size: 20
   knowledge:

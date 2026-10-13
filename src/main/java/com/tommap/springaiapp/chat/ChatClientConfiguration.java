@@ -1,5 +1,6 @@
 package com.tommap.springaiapp.chat;
 
+import com.tommap.springaiapp.cache.SemanticCacheAdvisor;
 import com.tommap.springaiapp.knowledge.KnowledgeAdvisor;
 import com.tommap.springaiapp.trace.TraceCollector;
 import io.micrometer.observation.ObservationRegistry;
@@ -38,11 +39,11 @@ class ChatClientConfiguration {
 
     @Bean
     ChatClient chatClient(ChatModel chatModel, ObservationRegistry observationRegistry,
-                          ToolCallingManager toolCallingManager, ConversationMemoryAdvisor memoryAdvisor,
-                          KnowledgeAdvisor knowledgeAdvisor) {
+                          ToolCallingManager toolCallingManager, SemanticCacheAdvisor cacheAdvisor,
+                          ConversationMemoryAdvisor memoryAdvisor, KnowledgeAdvisor knowledgeAdvisor) {
         return ChatClient.builder(chatModel, observationRegistry, null, null,
                         ToolCallingAdvisor.builder().toolCallingManager(toolCallingManager))
-                .defaultAdvisors(memoryAdvisor, knowledgeAdvisor)
+                .defaultAdvisors(cacheAdvisor, memoryAdvisor, knowledgeAdvisor)
                 .build();
     }
 }

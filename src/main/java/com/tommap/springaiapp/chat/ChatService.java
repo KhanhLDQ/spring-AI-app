@@ -2,6 +2,7 @@ package com.tommap.springaiapp.chat;
 
 import com.tommap.springaiapp.auth.AuthenticatedUser;
 import com.tommap.springaiapp.auth.ToolCaller;
+import com.tommap.springaiapp.cache.SemanticCacheAdvisor;
 import com.tommap.springaiapp.catalog.CatalogTools;
 import com.tommap.springaiapp.order.OrderTools;
 import com.tommap.springaiapp.trace.TraceCollector;
@@ -53,7 +54,8 @@ class ChatService {
         Flux<ChatEvent> tokens = chatClient.prompt()
                 .system(SystemPrompts.forRole(user.role()))
                 .user(message)
-                .advisors(a -> a.param(TraceCollector.TRACE_ID_PARAM, traceId).param(ChatMemory.CONVERSATION_ID, memoryKey))
+                .advisors(a -> a.param(TraceCollector.TRACE_ID_PARAM, traceId).param(ChatMemory.CONVERSATION_ID, memoryKey)
+                        .param(SemanticCacheAdvisor.ROLE_PARAM, user.role().name()))
                 .tools(catalogTools, orderTools)
                 .toolContext(toolContext)
                 .stream()
@@ -82,7 +84,12 @@ class ChatService {
         long ms = (System.nanoTime() - startNanos) / 1_000_000;
         return Flux.concat(
                 Flux.fromIterable(steps).map(ChatEvent.Step::new),
-                Flux.just(new ChatEvent.Done(ms, tokensIn, tokensOut, cost(tokensIn, tokensOut), "MISS")));
+                Flux.just(new ChatEvent.Done(ms, tokensIn, tokensOut, cost(tokensIn, tokensOut), cacheOutcome(steps))));
+    }
+
+    private static String cacheOutcome(List<TraceStep> steps) {
+        boolean hit = steps.stream().anyMatch(s -> "cache".equals(s.kind()) && Boolean.TRUE.equals(s.detail().get("hit")));
+        return hit ? "HIT" : "MISS";
     }
 
     private static long sum(List<TraceStep> steps, String key) {

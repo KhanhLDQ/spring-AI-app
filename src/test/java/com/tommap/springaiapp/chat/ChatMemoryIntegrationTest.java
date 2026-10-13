@@ -80,7 +80,7 @@ class ChatMemoryIntegrationTest {
         assertThat(memoryStep(second).get("detail").get("messagesLoaded").asInt()).isEqualTo(2);
         assertThat(memoryStep(second).get("detail").get("windowSize").asInt()).isEqualTo(20);
         assertThat(second.data("step").stream().map(s -> s.get("kind").asString()))
-                .containsExactly("memory", "rag", "model");
+                .containsExactly("cache", "memory", "rag", "model", "cachewrite");
     }
 
     @Test

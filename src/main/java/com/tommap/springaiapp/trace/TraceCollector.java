@@ -35,6 +35,12 @@ public class TraceCollector {
         }
     }
 
+    /** The steps recorded so far, without ending the trace; lets an advisor decide from what the turn did. */
+    public List<TraceStep> snapshot(String traceId) {
+        Trace trace = traces.get(traceId);
+        return trace == null ? List.of() : List.copyOf(trace.steps);
+    }
+
     /** Removes the trace and returns its steps ordered by start time. */
     public List<TraceStep> finish(String traceId) {
         Trace trace = traces.remove(traceId);

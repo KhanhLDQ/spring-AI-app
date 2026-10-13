@@ -5,6 +5,7 @@ import java.security.NoSuchAlgorithmException;
 import java.time.Clock;
 import java.util.HexFormat;
 import java.util.List;
+import com.tommap.springaiapp.cache.SemanticCache;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.transformer.splitter.TokenTextSplitter;
 import org.springframework.ai.vectorstore.SearchRequest;
@@ -28,15 +29,18 @@ class KnowledgeService {
     private final KnowledgeDocumentRepository docs;
     private final JdbcTemplate jdbc;
     private final Clock clock;
+    private final SemanticCache cache;
 
     KnowledgeService(@Qualifier(KnowledgeConfiguration.STORE) VectorStore store, KnowledgeReader reader,
-                     TokenTextSplitter splitter, KnowledgeDocumentRepository docs, JdbcTemplate jdbc, Clock clock) {
+                     TokenTextSplitter splitter, KnowledgeDocumentRepository docs, JdbcTemplate jdbc, Clock clock,
+                     SemanticCache cache) {
         this.store = store;
         this.reader = reader;
         this.splitter = splitter;
         this.docs = docs;
         this.jdbc = jdbc;
         this.clock = clock;
+        this.cache = cache;
     }
 
     /** Chunks and vectors commit together with the document row, so a failed embedding leaves nothing behind. */
@@ -66,6 +70,7 @@ class KnowledgeService {
         } catch (DataIntegrityViolationException e) {
             throw duplicate(filename);
         }
+        cache.clear();
         long storeMs = Math.max(0, millis(splitDone, storeDone) - embedMs);
         return new IngestResult(saved.getId(), filename, chunks.size(),
                 new EtlTimings(millis(start, readDone), millis(readDone, splitDone), embedMs, storeMs, chunks.size()));
@@ -86,7 +91,8 @@ class KnowledgeService {
     /** Cached answers were built on the old knowledge, so they go too. */
     @Transactional
     void deleteAll() {
-        jdbc.execute("TRUNCATE TABLE vector_store, semantic_cache");
+        jdbc.execute("TRUNCATE TABLE vector_store");
+        cache.clear();
         docs.deleteAllInBatch();
     }
 
