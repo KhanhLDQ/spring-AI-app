@@ -13,10 +13,13 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.function.IntSupplier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.memory.ChatMemory;
+import org.springframework.ai.chat.model.ChatResponse;
+import org.springframework.ai.chat.model.Generation;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 
@@ -53,16 +56,17 @@ class ChatService {
         String memoryKey = memoryKey(user, conversationId);
         Map<String, Object> toolContext = ToolCaller.contextFor(user, memoryKey);
 
-        Flux<ChatEvent> tokens = chatClient.prompt()
+        ChatClient.ChatClientRequestSpec prompt = chatClient.prompt()
                 .system(SystemPrompts.forRole(user.role()))
                 .user(message)
                 .advisors(a -> a.param(TraceCollector.TRACE_ID_PARAM, traceId).param(ChatMemory.CONVERSATION_ID, memoryKey)
                         .param(SemanticCacheAdvisor.ROLE_PARAM, user.role().name()))
                 .tools(catalogTools, orderTools)
-                .toolContext(toolContext)
-                .stream()
-                .content()
-                .map(ChatEvent.Token::new);
+                .toolContext(toolContext);
+        Flux<ChatEvent> tokens = Flux.defer(() -> {
+            RoundBreaks breaks = new RoundBreaks(() -> toolStepCount(traceId));
+            return prompt.stream().chatResponse().mapNotNull(breaks::next).map(ChatEvent.Token::new);
+        });
 
         return tokens
                 .timeout(TURN_TIMEOUT)
@@ -74,9 +78,43 @@ class ChatService {
                 });
     }
 
+    private int toolStepCount(String traceId) {
+        return (int) traces.snapshot(traceId).stream().filter(step -> "tool".equals(step.kind())).count();
+    }
+
     /** The caller's name is part of the key, so no one can read or continue another user's conversation. */
     static String memoryKey(AuthenticatedUser user, UUID conversationId) {
         return user.username() + ":" + conversationId;
+    }
+
+    /**
+     * The tool loop streams every model round into one text flow, so what the model says before a tool call and
+     * what it says after run together. The tool-call chunk itself never reaches this stream, but the tool's trace
+     * step does, so a blank line is inserted when a tool has run since the last text.
+     */
+    static final class RoundBreaks {
+
+        private final IntSupplier toolsRun;
+        private int toolsSeen;
+        private boolean sawText;
+
+        RoundBreaks(IntSupplier toolsRun) {
+            this.toolsRun = toolsRun;
+        }
+
+        String next(ChatResponse response) {
+            Generation generation = response.getResult();
+            String text = generation == null ? null : generation.getOutput().getText();
+            if (text == null || text.isEmpty()) {
+                return null;
+            }
+            int run = toolsRun.getAsInt();
+            boolean afterTool = run > toolsSeen;
+            toolsSeen = run;
+            boolean separate = afterTool && sawText;
+            sawText = true;
+            return separate ? "\n\n" + text : text;
+        }
     }
 
     private Flux<ChatEvent> finish(String traceId, long startNanos) {
