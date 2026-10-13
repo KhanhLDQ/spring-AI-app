@@ -9,3 +9,6 @@ kefir:
     rag:
       # The mock embedding compares words, so even a good match scores far below text-embedding-3-small.
       similarity-threshold: 0.25
+    router:
+      # Word overlap again: an exact order phrase scores 1.0, a loose paraphrase well below text-embedding-3-small.
+      similarity-threshold: 0.30

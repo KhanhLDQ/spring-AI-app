@@ -1,0 +1,19 @@
+# Messages that act on orders. Retrieval is skipped only when a message is clearly closer to these than to knowledge.txt.
+Cho mình đặt 3 chai kefir mật ong
+Đặt giúp mình 2 chai kefir vị cà phê
+Mình muốn mua 5 chai kefir
+Đổi đơn vừa rồi thành 4 chai
+Sửa số lượng đơn #1042 thành 6 chai
+Huỷ đơn #1042 giúp mình
+Huỷ đơn vừa đặt
+Cho mình xem các đơn hàng của mình
+Đơn hàng của tôi đang ở trạng thái nào
+Duyệt đơn #1031
+Duyệt tất cả đơn đang chờ
+Liệt kê các đơn đang chờ duyệt
+Order 2 honey kefir
+Make it 4
+Cancel my last order
+Show my orders
+Approve order 1031
+Place an order for 3 bottles of coffee kefir

@@ -3,8 +3,8 @@ package com.tommap.springaiapp.knowledge;
 import java.util.Optional;
 
 /**
- * Wraps the user's question with the retrieved chunks. Retrieval runs on every turn and cannot tell an order
- * request from a question, so the text tells the model to ignore irrelevant context and keep using its tools.
+ * Wraps the user's question with the retrieved chunks. The router skips clear order requests, but an unclear or
+ * mixed message is still retrieved for, so the text tells the model to ignore irrelevant context and keep using its tools.
  * The helpers read the wrapped message back, so the scripted mock model stays in step with this format.
  */
 public final class RagPrompt {

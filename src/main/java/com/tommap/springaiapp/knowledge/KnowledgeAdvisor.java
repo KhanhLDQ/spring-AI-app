@@ -19,7 +19,7 @@ import org.springframework.ai.vectorstore.VectorStore;
 import reactor.core.scheduler.Scheduler;
 
 /**
- * QuestionAnswerAdvisor plus an Inspector step. The vector store's own observation cannot be tied to a chat
+ * QuestionAnswerAdvisor behind a QueryRouter, plus Inspector steps for both. The vector store's own observation cannot be tied to a chat
  * turn (the search runs on a scheduler thread with no parent observation), so the step is recorded here, where
  * the turn's trace id is in the request context.
  */
@@ -27,13 +27,15 @@ public final class KnowledgeAdvisor implements BaseAdvisor {
 
     private final VectorStore store;
     private final TraceCollector traces;
+    private final QueryRouter router;
     private final int topK;
     private volatile double threshold;
     private volatile QuestionAnswerAdvisor retrieval;
 
-    KnowledgeAdvisor(VectorStore store, TraceCollector traces, int topK, double threshold) {
+    KnowledgeAdvisor(VectorStore store, TraceCollector traces, QueryRouter router, int topK, double threshold) {
         this.store = store;
         this.traces = traces;
+        this.router = router;
         this.topK = topK;
         threshold(threshold);
     }
@@ -54,10 +56,21 @@ public final class KnowledgeAdvisor implements BaseAdvisor {
 
     @Override
     public ChatClientRequest before(ChatClientRequest request, AdvisorChain chain) {
+        String traceId = request.context().get(TraceCollector.TRACE_ID_PARAM) instanceof String id ? id : null;
+        long routeStart = System.nanoTime();
+        QueryRouter.Decision decision = router.route(request.prompt().getUserMessage().getText());
+        long routeEnd = System.nanoTime();
+        if (traceId != null) {
+            long startMs = (routeStart - traces.startNanos(traceId)) / 1_000_000;
+            traces.record(traceId, routeStep(decision, startMs, (routeEnd - routeStart) / 1_000_000));
+        }
+        if (decision.skipRetrieval()) {
+            return request;
+        }
         long start = System.nanoTime();
         ChatClientRequest augmented = retrieval.before(request, chain);
         long end = System.nanoTime();
-        if (request.context().get(TraceCollector.TRACE_ID_PARAM) instanceof String traceId) {
+        if (traceId != null) {
             long startMs = (start - traces.startNanos(traceId)) / 1_000_000;
             traces.record(traceId, step(retrieved(augmented), startMs, (end - start) / 1_000_000));
         }
@@ -83,6 +96,17 @@ public final class KnowledgeAdvisor implements BaseAdvisor {
     private static List<Document> retrieved(ChatClientRequest request) {
         Object documents = request.context().get(QuestionAnswerAdvisor.RETRIEVED_DOCUMENTS);
         return documents == null ? List.of() : (List<Document>) documents;
+    }
+
+    private TraceStep routeStep(QueryRouter.Decision decision, long startMs, long durMs) {
+        Map<String, Object> detail = new LinkedHashMap<>();
+        detail.put("skip", decision.skipRetrieval());
+        detail.put("transactional", decision.transactional());
+        detail.put("knowledge", decision.knowledge());
+        detail.put("threshold", router.threshold());
+        detail.put("margin", router.margin());
+        String title = decision.skipRetrieval() ? "Route: order request, retrieval skipped" : "Route: retrieve knowledge";
+        return new TraceStep("route", title, "QueryRouter", startMs, durMs, detail);
     }
 
     private TraceStep step(List<Document> documents, long startMs, long durMs) {

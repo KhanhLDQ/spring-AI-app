@@ -53,6 +53,10 @@ kefir:
     rag:
       top-k: 3
       similarity-threshold: 0.50
+    router:
+      similarity-threshold: 0.50
+      # Measured with text-embedding-3-small: order requests lead by 0.14+, a question that also orders by 0.09 at most.
+      margin: 0.12
   jwt:
     signing-key: ${JWT_SIGNING_KEY:}
     ttl: 24h

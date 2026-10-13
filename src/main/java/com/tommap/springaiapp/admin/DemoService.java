@@ -4,6 +4,7 @@ import com.tommap.springaiapp.cache.SemanticCache;
 import com.tommap.springaiapp.chat.ChatHistoryService;
 import com.tommap.springaiapp.knowledge.KnowledgeAdvisor;
 import com.tommap.springaiapp.knowledge.KnowledgeService;
+import com.tommap.springaiapp.knowledge.QueryRouter;
 import com.tommap.springaiapp.order.OrderSeedService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Profile;
@@ -19,19 +20,25 @@ class DemoService {
     private final ChatHistoryService history;
     private final SemanticCache cache;
     private final KnowledgeAdvisor rag;
+    private final QueryRouter router;
     private final double defaultCacheThreshold;
     private final double defaultRagThreshold;
+    private final double defaultRouteThreshold;
 
     DemoService(OrderSeedService orders, KnowledgeService knowledge, ChatHistoryService history, SemanticCache cache,
-                KnowledgeAdvisor rag, @Value("${kefir.cache.similarity-threshold}") double defaultCacheThreshold,
-                @Value("${kefir.knowledge.rag.similarity-threshold}") double defaultRagThreshold) {
+                KnowledgeAdvisor rag, QueryRouter router,
+                @Value("${kefir.cache.similarity-threshold}") double defaultCacheThreshold,
+                @Value("${kefir.knowledge.rag.similarity-threshold}") double defaultRagThreshold,
+                @Value("${kefir.knowledge.router.similarity-threshold}") double defaultRouteThreshold) {
         this.orders = orders;
         this.knowledge = knowledge;
         this.history = history;
         this.cache = cache;
         this.rag = rag;
+        this.router = router;
         this.defaultCacheThreshold = defaultCacheThreshold;
         this.defaultRagThreshold = defaultRagThreshold;
+        this.defaultRouteThreshold = defaultRouteThreshold;
     }
 
     void reset() {
@@ -41,6 +48,7 @@ class DemoService {
         cache.clear();
         cache.threshold(defaultCacheThreshold);
         rag.threshold(defaultRagThreshold);
+        router.threshold(defaultRouteThreshold);
     }
 
     void reseed() {
@@ -59,20 +67,23 @@ class DemoService {
         history.clearAll();
     }
 
-    Thresholds setThresholds(Double cacheValue, Double ragValue) {
+    Thresholds setThresholds(Double cacheValue, Double ragValue, Double routeValue) {
         if (cacheValue != null) {
             cache.threshold(cacheValue);
         }
         if (ragValue != null) {
             rag.threshold(ragValue);
         }
+        if (routeValue != null) {
+            router.threshold(routeValue);
+        }
         return thresholds();
     }
 
     Thresholds thresholds() {
-        return new Thresholds(cache.threshold(), rag.threshold());
+        return new Thresholds(cache.threshold(), rag.threshold(), router.threshold());
     }
 
-    record Thresholds(double cache, double rag) {
+    record Thresholds(double cache, double rag, double route) {
     }
 }

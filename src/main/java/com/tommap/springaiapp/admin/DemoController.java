@@ -56,10 +56,11 @@ class DemoController {
 
     @PutMapping("/threshold")
     DemoService.Thresholds threshold(@RequestBody @Valid ThresholdRequest request) {
-        return demo.setThresholds(request.cache(), request.rag());
+        return demo.setThresholds(request.cache(), request.rag(), request.route());
     }
 
     record ThresholdRequest(@DecimalMin("0.0") @DecimalMax("1.0") Double cache,
-                            @DecimalMin("0.0") @DecimalMax("1.0") Double rag) {
+                            @DecimalMin("0.0") @DecimalMax("1.0") Double rag,
+                            @DecimalMin("0.0") @DecimalMax("1.0") Double route) {
     }
 }

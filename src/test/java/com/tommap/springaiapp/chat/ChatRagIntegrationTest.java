@@ -63,7 +63,7 @@ class ChatRagIntegrationTest {
 
         assertThat(reply.answer()).contains("dưới 3 ngày");
         List<String> kinds = reply.data("step").stream().map(s -> s.get("kind").asString()).toList();
-        assertThat(kinds).containsExactly("cache", "memory", "rag", "model", "cachewrite");
+        assertThat(kinds).containsExactly("cache", "memory", "route", "rag", "model", "cachewrite");
     }
 
     @Test
@@ -95,12 +95,27 @@ class ChatRagIntegrationTest {
     }
 
     @Test
-    void anOrderStillReachesTheToolsEvenThoughRetrievalRuns() throws Exception {
+    void anOrderSkipsRetrievalAndStillReachesTheTools() throws Exception {
         var reply = chat.chat(chat.login("an"), "order 1 honey kefir");
 
         assertThat(reply.toolSteps()).singleElement()
                 .satisfies(step -> assertThat(step.get("detail").get("name").asString()).isEqualTo("createOrder"));
-        assertThat(reply.data("step")).anySatisfy(step -> assertThat(step.get("kind").asString()).isEqualTo("rag"));
+        List<String> kinds = reply.data("step").stream().map(s -> s.get("kind").asString()).toList();
+        assertThat(kinds).contains("route").doesNotContain("rag");
+        JsonNode route = reply.data("step").stream().filter(s -> "route".equals(s.get("kind").asString())).findFirst()
+                .orElseThrow();
+        assertThat(route.get("title").asString()).isEqualTo("Route: order request, retrieval skipped");
+        assertThat(route.get("detail").get("skip").asBoolean()).isTrue();
+    }
+
+    @Test
+    void aMessageThatAsksAndOrdersStillRetrieves() throws Exception {
+        var reply = chat.chat(chat.login("an"), "Kefir mật ong để được bao lâu, và đặt giúp mình 2 chai");
+
+        JsonNode route = reply.data("step").stream().filter(s -> "route".equals(s.get("kind").asString())).findFirst()
+                .orElseThrow();
+        assertThat(route.get("detail").get("skip").asBoolean()).isFalse();
+        assertThat(ragStep(reply).get("detail").get("chunks")).isNotEmpty();
     }
 
     private static JsonNode ragStep(ChatTestClient.Reply reply) {

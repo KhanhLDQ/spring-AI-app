@@ -74,7 +74,7 @@ class SemanticCacheIntegrationTest {
     void aKnowledgeAnswerIsStoredAndTheSameQuestionIsThenServedFromTheCache() throws Exception {
         var first = chat.chat(user, QUESTION);
 
-        assertThat(kinds(first)).containsExactly("cache", "memory", "rag", "model", "cachewrite");
+        assertThat(kinds(first)).containsExactly("cache", "memory", "route", "rag", "model", "cachewrite");
         assertThat(step(first, "cache").get("detail").get("hit").asBoolean()).isFalse();
         assertThat(step(first, "cachewrite").get("detail").get("stored").asBoolean()).isTrue();
         assertThat(first.data("done").getFirst().get("cache").asString()).isEqualTo("MISS");

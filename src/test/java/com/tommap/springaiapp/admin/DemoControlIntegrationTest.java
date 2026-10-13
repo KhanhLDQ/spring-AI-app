@@ -57,7 +57,7 @@ class DemoControlIntegrationTest {
     @Test
     void resetBringsEveryPieceOfDemoStateBack() throws Exception {
         mvc.perform(put("/api/admin/demo/threshold").header("Authorization", admin)
-                .contentType(MediaType.APPLICATION_JSON).content("{\"cache\":0.99,\"rag\":0.9}"));
+                .contentType(MediaType.APPLICATION_JSON).content("{\"cache\":0.99,\"rag\":0.9,\"route\":0.95}"));
         jdbc.update("DELETE FROM orders");
         chat(user, FAQ);
         post("/api/admin/demo/clear-vectors", admin);
@@ -70,7 +70,8 @@ class DemoControlIntegrationTest {
         assertThat(count("vector_store")).isEqualTo(48);
         mvc.perform(get("/api/config").header("Authorization", admin))
                 .andExpect(jsonPath("$.thresholds.cache", is(0.85)))
-                .andExpect(jsonPath("$.thresholds.rag", is(0.25)));
+                .andExpect(jsonPath("$.thresholds.rag", is(0.25)))
+                .andExpect(jsonPath("$.thresholds.route", is(0.30)));
     }
 
     @Test
@@ -113,6 +114,19 @@ class DemoControlIntegrationTest {
 
         post("/api/admin/demo/clear-cache", admin);
         assertThat(chat(user, FAQ)).contains("\"chunks\":[]");
+    }
+
+    @Test
+    void routeThresholdTurnsRoutingOffWhenRaisedAboveEveryScore() throws Exception {
+        mvc.perform(put("/api/admin/demo/threshold").header("Authorization", admin)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"route\":1.0}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.route", is(1.0)))
+                .andExpect(jsonPath("$.rag", is(0.25)));
+
+        assertThat(chat(user, "order 1 honey kefir")).contains("\"skip\":false").contains("\"kind\":\"rag\"");
+
+        post("/api/admin/demo/reset", admin);
     }
 
     @Test

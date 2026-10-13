@@ -38,9 +38,15 @@ class KnowledgeConfiguration {
      */
     @Bean
     KnowledgeAdvisor knowledgeAdvisor(@Qualifier(STORE) VectorStore store, KnowledgeProperties properties,
-                                      TraceCollector traces) {
+                                      TraceCollector traces, QueryRouter router) {
         KnowledgeProperties.Rag rag = properties.rag();
-        return new KnowledgeAdvisor(store, traces, rag.topK(), rag.similarityThreshold());
+        return new KnowledgeAdvisor(store, traces, router, rag.topK(), rag.similarityThreshold());
+    }
+
+    @Bean
+    QueryRouter queryRouter(EmbeddingModel embeddingModel, KnowledgeProperties properties) {
+        KnowledgeProperties.Router router = properties.router();
+        return QueryRouter.withBundledExamples(embeddingModel, router.similarityThreshold(), router.margin());
     }
 
     @Bean
