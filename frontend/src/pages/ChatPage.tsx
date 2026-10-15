@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useEffect, useRef, useState, type FormEvent } from "react";
+import { Fragment, useCallback, useEffect, useRef, useState, type CSSProperties, type FormEvent } from "react";
 import { Markdown } from "../chat/Markdown";
 import { fetchMyOrders } from "../api/orders";
 import { fetchProducts } from "../api/products";
@@ -15,6 +15,7 @@ import { toolCalls } from "../chat/toolSteps";
 import { TurnMeta } from "../chat/TurnMeta";
 import { useChat } from "../chat/useChat";
 import { Inspector } from "../inspector/Inspector";
+import { Resizer, usePanelSize } from "../layout/Resizer";
 
 export function ChatPage({ onOpenOrders }: { onOpenOrders: () => void }) {
   const { session, logout } = useAuth();
@@ -27,6 +28,8 @@ export function ChatPage({ onOpenOrders }: { onOpenOrders: () => void }) {
   const [draft, setDraft] = useState("");
   const end = useRef<HTMLDivElement>(null);
   const [selected, setSelected] = useState(0);
+  const inspectorWidth = usePanelSize("kefir.size.inspector", 435, 300, 900);
+  const scriptHeight = usePanelSize("kefir.size.scripts", 99, 34, 420);
   const [usedScripts, setUsedScripts] = useState<ReadonlySet<string>>(new Set());
 
   // A new turn pulls the Inspector to it; the user can then step back through earlier turns.
@@ -77,7 +80,7 @@ export function ChatPage({ onOpenOrders }: { onOpenOrders: () => void }) {
   }
 
   return (
-    <div className="chat">
+    <div className="chat" style={{ "--ins-w": `${inspectorWidth.value}px` } as CSSProperties}>
       <div className="convo">
         <header className="convo-head">
           <div>
@@ -144,7 +147,10 @@ export function ChatPage({ onOpenOrders }: { onOpenOrders: () => void }) {
           </div>
         </div>
 
-        <ScriptBar role={session!.user.role} disabled={busy || !ready} used={usedScripts} onRun={runScript} />
+        <div className="script-wrap" style={{ "--script-h": `${scriptHeight.value}px` } as CSSProperties}>
+          <Resizer size={scriptHeight} axis="y" direction={-1} label="Demo scripts height" className="script-resizer" />
+          <ScriptBar role={session!.user.role} disabled={busy || !ready} used={usedScripts} onRun={runScript} />
+        </div>
 
         <form className="composer" onSubmit={submit}>
           <div className="composer-in">
@@ -162,6 +168,7 @@ export function ChatPage({ onOpenOrders }: { onOpenOrders: () => void }) {
           </div>
         </form>
       </div>
+      <Resizer size={inspectorWidth} axis="x" direction={-1} label="Inspector width" className="ins-resizer" />
       <Inspector turns={turns} selected={selected} onSelect={select} />
     </div>
   );

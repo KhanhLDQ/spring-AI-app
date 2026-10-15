@@ -34,7 +34,9 @@
 .src b { background: var(--surface2); color: var(--ink); border-radius: 99px; width: 1.2rem; height: 1.2rem; display: grid; place-items: center; font-size: .7rem; }
 .tchip.cache { background: var(--ok-soft); color: var(--ok); }
 .script { padding: .6rem 1.4rem 0; background: var(--surface); border-top: 1px solid var(--line); }
-.script-in { max-width: 46rem; margin: 0 auto; display: flex; align-items: center; gap: .4rem; flex-wrap: wrap; max-height: 6.6rem; overflow-y: auto; padding-bottom: .4rem; scrollbar-width: thin; }
+.script-in { max-width: 46rem; margin: 0 auto; display: flex; align-items: center; gap: .4rem; flex-wrap: wrap; height: var(--script-h, 6.6rem); overflow-y: auto; align-content: flex-start; padding-bottom: .4rem; scrollbar-width: thin; }
+.script-wrap { position: relative; }
+.script-resizer { top: -4px; }
 .script-lbl { font-size: .72rem; letter-spacing: .08em; text-transform: uppercase; font-weight: 600; color: var(--muted); }
 .sc { display: inline-flex; align-items: center; gap: .5rem; border: 1px solid var(--line); background: var(--bg); border-radius: 99px; padding: .15rem .7rem; font-size: .8rem; text-align: left; }
 .sc:hover:not(:disabled) { border-color: var(--accent); }

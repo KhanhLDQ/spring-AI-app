@@ -1,6 +1,6 @@
 .mono { font-family: var(--font-mono); }
 .num { font-variant-numeric: tabular-nums; }
-.shell { display: grid; grid-template-columns: 14.5rem minmax(0, 1fr); height: 100%; }
+.shell { position: relative; display: grid; grid-template-columns: var(--side-w, 14.5rem) minmax(0, 1fr); height: 100%; }
 .side { background: var(--surface); border-right: 1px solid var(--line); display: flex; flex-direction: column; gap: 1.25rem; padding: 1.1rem .8rem; overflow-y: auto; }
 .brand { display: flex; align-items: center; gap: .65rem; padding: 0 .4rem; }
 .brand-mark { width: 2rem; height: 2rem; border-radius: 50% 50% 50% .5rem; background: var(--accent); display: grid; place-items: center; color: var(--accent-ink); font: 700 1.05rem var(--font-display); flex: none; }
@@ -53,11 +53,24 @@ td.r, th.r { text-align: right; }
 .muted { color: var(--muted); }
 .view { min-height: 0; flex: 1; display: flex; flex-direction: column; }
 [hidden] { display: none !important; }
+/* drag handles (layout/Resizer.tsx) */
+.resizer { position: absolute; z-index: 5; touch-action: none; }
+.resizer::after { content: ""; position: absolute; background: var(--accent); opacity: 0; transition: opacity .15s; border-radius: 2px; }
+.resizer:hover::after, .resizer:focus-visible::after, .resizing-x .resizer-x::after, .resizing-y .resizer-y::after { opacity: .7; }
+.resizer:focus-visible { outline: none; }
+.resizer-x { top: 0; bottom: 0; width: 9px; cursor: col-resize; }
+.resizer-x::after { top: 0; bottom: 0; left: 3px; width: 3px; }
+.resizer-y { left: 0; right: 0; height: 9px; cursor: row-resize; }
+.resizer-y::after { left: 0; right: 0; top: 3px; height: 3px; }
+.side-resizer { left: calc(var(--side-w, 14.5rem) - 5px); }
+body.resizing-x, body.resizing-x * { cursor: col-resize !important; user-select: none; }
+body.resizing-y, body.resizing-y * { cursor: row-resize !important; user-select: none; }
 @media (max-width: 760px) {
   .shell { grid-template-columns: minmax(0, 1fr); height: auto; min-height: 100%; }
   .side { flex-direction: row; flex-wrap: wrap; align-items: center; gap: .5rem .9rem; padding: .6rem 1rem; border-right: 0; border-bottom: 1px solid var(--line); overflow: visible; }
   .who, .nav-label, .side-foot, .brand-sub { display: none; }
   .nav-group { flex-direction: row; flex-wrap: wrap; }
   .page { padding: 1.1rem 1rem; }
+  .side-resizer { display: none; }
 }
 

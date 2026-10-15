@@ -1,6 +1,7 @@
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import type { DemoAccount } from "../api/auth";
 import { useAuth } from "../auth/AuthContext";
+import { Resizer, usePanelSize } from "./Resizer";
 
 export type View = "chat" | "orders" | "admin-orders" | "knowledge" | "control";
 
@@ -33,6 +34,7 @@ export function AppShell({ view, onNavigate, children }: Props) {
   const { session, login, logout } = useAuth();
   const user = session!.user;
   const isAdmin = user.role === "ADMIN";
+  const sideWidth = usePanelSize("kefir.size.side", 218, 170, 420);
 
   // Switching account is a fresh login, so the demo can jump between a customer and an admin in one click.
   const switchTo = (account: DemoAccount) => {
@@ -42,7 +44,7 @@ export function AppShell({ view, onNavigate, children }: Props) {
   };
 
   return (
-    <div className="shell">
+    <div className="shell" style={{ "--side-w": `${sideWidth.value}px` } as CSSProperties}>
       <aside className="side" aria-label="Navigation">
         <div className="brand">
           <div className="brand-mark" aria-hidden="true">K</div>
@@ -96,6 +98,7 @@ export function AppShell({ view, onNavigate, children }: Props) {
           <button className="link-btn" onClick={logout}>Log out</button>
         </div>
       </aside>
+      <Resizer size={sideWidth} axis="x" direction={1} label="Sidebar width" className="side-resizer" />
       <main className="main">{children}</main>
     </div>
   );
