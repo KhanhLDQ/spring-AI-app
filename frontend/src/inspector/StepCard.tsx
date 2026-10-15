@@ -1,7 +1,7 @@
 import type { RagDetail, StepKind, TraceStep } from "../api/chat";
 import { sourceLabel } from "../chat/sources";
 import { formatMs } from "./format";
-import { HOW_SPRING_AI_DOES_IT } from "./howSpringAiDoesIt";
+import { howSpringAiDoesIt } from "./howSpringAiDoesIt";
 
 const ICONS: Record<StepKind, string> = {
   tool: "M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.6 2.6-2.4-.6-.6-2.4z",
@@ -158,7 +158,7 @@ export function StepCard({ step, totalMs }: { step: TraceStep; totalMs: number }
       </div>
       <details className="how">
         <summary>How Spring AI does it</summary>
-        <pre className="code">{HOW_SPRING_AI_DOES_IT[step.kind]}</pre>
+        <pre className="code">{howSpringAiDoesIt(step)}</pre>
       </details>
     </section>
   );
