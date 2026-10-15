@@ -8,8 +8,10 @@ build/
 .env
 application-local.*
 
-# Not implementation: planning, mockups, reference material, local tooling
-docs/
+# Not implementation: planning, mockups, reference material, local tooling.
+# The official demo script is the one exception: the demo machine needs it.
+docs/*
+!docs/DEMO-SCRIPT-OFFICIAL.md
 .claude/
 HELP.md
 .env.*
