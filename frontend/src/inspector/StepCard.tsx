@@ -15,6 +15,9 @@ const ICONS: Record<StepKind, string> = {
 
 function StepBody({ step }: { step: TraceStep }) {
   const d = step.detail;
+  if (d.off) {
+    return <p className="off-note">Switched off for this message: the request went straight to the next step.</p>;
+  }
   if (step.kind === "model") {
     return (
       <p>

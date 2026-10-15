@@ -14,8 +14,11 @@ import { ToolChips } from "../chat/ToolChips";
 import { toolCalls } from "../chat/toolSteps";
 import { TurnMeta } from "../chat/TurnMeta";
 import { useChat } from "../chat/useChat";
+import { SWITCHES, type Switch } from "../api/chat";
 import { Inspector } from "../inspector/Inspector";
 import { Resizer, usePanelSize } from "../layout/Resizer";
+
+const SWITCH_LABELS: Record<Switch, string> = { memory: "Memory", cache: "Cache", rag: "RAG", tools: "Tools" };
 
 export function ChatPage({ onOpenOrders }: { onOpenOrders: () => void }) {
   const { session, logout } = useAuth();
@@ -30,6 +33,18 @@ export function ChatPage({ onOpenOrders }: { onOpenOrders: () => void }) {
   const [selected, setSelected] = useState(0);
   const inspectorWidth = usePanelSize("kefir.size.inspector", 435, 300, 900);
   const scriptHeight = usePanelSize("kefir.size.scripts", 99, 34, 420);
+  const [off, setOff] = useState<ReadonlySet<Switch>>(new Set());
+  const toggle = (name: Switch) =>
+    setOff((now) => {
+      const next = new Set(now);
+      if (next.has(name)) {
+        next.delete(name);
+      } else {
+        next.add(name);
+      }
+      return next;
+    });
+  const offList = () => SWITCHES.filter((s) => off.has(s));
   const [usedScripts, setUsedScripts] = useState<ReadonlySet<string>>(new Set());
 
   // A new turn pulls the Inspector to it; the user can then step back through earlier turns.
@@ -68,7 +83,7 @@ export function ChatPage({ onOpenOrders }: { onOpenOrders: () => void }) {
       return;
     }
     setDraft("");
-    void send(question);
+    void send(question, offList());
   }
 
   function runScript(message: string) {
@@ -76,7 +91,7 @@ export function ChatPage({ onOpenOrders }: { onOpenOrders: () => void }) {
       return;
     }
     setUsedScripts((used) => new Set(used).add(message));
-    void send(message);
+    void send(message, offList());
   }
 
   return (
@@ -90,6 +105,16 @@ export function ChatPage({ onOpenOrders }: { onOpenOrders: () => void }) {
             </small>
           </div>
           <div className="head-actions">
+            <div className="switches" role="group" aria-label="Advisors for the next message">
+              {SWITCHES.map((name) => (
+                <button key={name} type="button" className="sw" aria-pressed={!off.has(name)} onClick={() => toggle(name)}>
+                  {SWITCH_LABELS[name]}
+                </button>
+              ))}
+              <button type="button" className="sw all" onClick={() => setOff(off.size === SWITCHES.length ? new Set() : new Set(SWITCHES))}>
+                {off.size === SWITCHES.length ? "All on" : "All off"}
+              </button>
+            </div>
             <button className="btn sm" onClick={() => void newChat()} disabled={busy}>
               New chat
             </button>
@@ -133,7 +158,7 @@ export function ChatPage({ onOpenOrders }: { onOpenOrders: () => void }) {
                         </Fragment>
                       );
                     })}
-                    {turn.stats && <TurnMeta stats={turn.stats} />}
+                    {turn.stats && <TurnMeta stats={turn.stats} off={turn.off} />}
                     {turn.status === "error" && (
                       <div className="b-error" role="alert">
                         {turn.error}

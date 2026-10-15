@@ -31,6 +31,7 @@
 .ms { font: 500 .75rem var(--font-mono); font-variant-numeric: tabular-nums; min-width: 4.6rem; text-align: right; color: var(--ins-ink); }
 .sb { font-size: .85rem; color: var(--ins-ink); display: flex; flex-direction: column; gap: .45rem; }
 .sb p { margin: 0; color: var(--ins-muted); }
+.sb p.off-note { color: var(--k-model); }
 .sb p b, .sb .hl { color: var(--ins-ink); font-family: var(--font-mono); font-weight: 500; }
 .code { font: 400 .8rem/1.6 var(--font-mono); background: var(--ins-bg); border-radius: .4rem; padding: .5rem .7rem; overflow-x: auto; white-space: pre; margin: 0; color: var(--ins-ink); }
 .ret { font: 400 .8rem var(--font-mono); color: var(--k-cache); }

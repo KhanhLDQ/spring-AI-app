@@ -5,6 +5,10 @@ export { UnauthorizedError };
 
 export type StepKind = "cache" | "cachewrite" | "memory" | "route" | "rag" | "model" | "tool";
 
+/** Pipeline parts the chat screen can switch off for a message; the backend accepts exactly these names. */
+export type Switch = "memory" | "cache" | "rag" | "tools";
+export const SWITCHES: Switch[] = ["memory", "cache", "rag", "tools"];
+
 export interface TraceStep {
   kind: StepKind;
   title: string;
@@ -33,7 +37,7 @@ export interface TurnStats {
   tokensIn: number;
   tokensOut: number;
   cost: number;
-  cache: "HIT" | "MISS";
+  cache: "HIT" | "MISS" | "OFF";
 }
 
 export interface StreamHandlers {
@@ -58,13 +62,14 @@ export async function streamChat(
   token: string,
   conversationId: string,
   message: string,
+  off: Switch[],
   handlers: StreamHandlers,
   signal: AbortSignal,
 ): Promise<void> {
   await fetchEventSource("/api/chat/stream", {
     method: "POST",
     headers: jsonHeaders(token),
-    body: JSON.stringify({ conversationId, message }),
+    body: JSON.stringify({ conversationId, message, off }),
     signal,
     openWhenHidden: true,
     async onopen(response) {

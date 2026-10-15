@@ -52,10 +52,11 @@ QuestionAnswerAdvisor.builder(store)
 ChatClientRequest augmented = retrieval.before(request, chain);   // chunks → prompt`,
   model: `// chat/ChatService.java
 chatClient.prompt()
-        .system(SystemPrompts.forRole(user.role(), ShopTime.today(clock)))
+        .system(SystemPrompts.forRole(user.role(), ShopTime.today(clock), !off.contains(AdvisorSwitch.TOOLS)))
         .user(message)
-        .advisors(a -> a.param(TraceCollector.TRACE_ID_PARAM, traceId) …)
-        .tools(catalogTools, orderTools)
+        .advisors(a -> a.param(TraceCollector.TRACE_ID_PARAM, traceId) …
+                .param(AdvisorSwitch.OFF_PARAM, Set.copyOf(off)))   // the chat screen's switches
+        .tools(catalogTools, orderTools)          // left out when Tools is switched off
         .toolContext(toolContext)
         .stream().chatResponse()          // Flux<ChatResponse> → ChatEvent.Token → SSE
 …

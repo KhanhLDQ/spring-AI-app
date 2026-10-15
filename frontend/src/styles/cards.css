@@ -9,6 +9,7 @@
 .meta { display: flex; flex-wrap: wrap; gap: .35rem; font: 400 .72rem var(--font-mono); color: var(--muted); }
 .meta span { background: var(--surface2); border-radius: .35rem; padding: .1rem .5rem; white-space: nowrap; }
 .meta .hit { background: var(--ok-soft); color: var(--ok); font-weight: 500; }
+.meta .off { background: var(--warn-soft); color: var(--warn); font-weight: 500; }
 .card .btn { align-self: flex-start; }
 .products { display: grid; grid-template-columns: repeat(auto-fill, minmax(8.5rem, 1fr)); gap: .6rem; animation: rise .3s ease-out; }
 .product { border: 1px solid var(--line); border-radius: .65rem; background: var(--surface); overflow: hidden; display: flex; flex-direction: column; }
