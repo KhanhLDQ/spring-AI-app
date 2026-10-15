@@ -41,7 +41,7 @@ class ChatController {
 
     @PostMapping(path = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     Flux<ServerSentEvent<Object>> stream(@AuthenticationPrincipal Jwt jwt, @Valid @RequestBody ChatRequest request) {
-        return chatService.stream(AuthenticatedUser.from(jwt), request.conversationId(), request.message())
+        return chatService.stream(AuthenticatedUser.from(jwt), request.conversationId(), request.message(), request.offOrEmpty())
                 .map(event -> ServerSentEvent.<Object>builder(event.payload()).event(event.name()).build());
     }
 }

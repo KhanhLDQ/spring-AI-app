@@ -1,5 +1,6 @@
 package com.tommap.springaiapp.knowledge;
 
+import com.tommap.springaiapp.chat.AdvisorSwitch;
 import com.tommap.springaiapp.trace.TraceCollector;
 import com.tommap.springaiapp.trace.TraceStep;
 import java.util.ArrayList;
@@ -64,6 +65,16 @@ public final class KnowledgeAdvisor implements BaseAdvisor {
     @Override
     public ChatClientRequest before(ChatClientRequest request, AdvisorChain chain) {
         String traceId = request.context().get(TraceCollector.TRACE_ID_PARAM) instanceof String id ? id : null;
+        if (AdvisorSwitch.isOff(request.context(), AdvisorSwitch.RAG)) {
+            if (traceId != null) {
+                Map<String, Object> detail = new LinkedHashMap<>();
+                detail.put("off", true);
+                detail.put("chunks", List.of());
+                traces.record(traceId, new TraceStep("rag", "Retrieval: off", "QuestionAnswerAdvisor",
+                        (System.nanoTime() - traces.startNanos(traceId)) / 1_000_000, 0, detail));
+            }
+            return request;
+        }
         long routeStart = System.nanoTime();
         QueryRouter.Decision decision = router.route(request.prompt().getUserMessage().getText());
         long routeEnd = System.nanoTime();
@@ -72,6 +83,10 @@ public final class KnowledgeAdvisor implements BaseAdvisor {
             traces.record(traceId, routeStep(decision, startMs, (routeEnd - routeStart) / 1_000_000));
         }
         if (decision.skipRetrieval()) {
+            // The reminder only makes sense when the model has tools to call.
+            if (AdvisorSwitch.isOff(request.context(), AdvisorSwitch.TOOLS)) {
+                return request;
+            }
             return request.mutate().prompt(request.prompt().augmentUserMessage(message ->
                     message.mutate().text(message.getText() + TOOL_REMINDER).build())).build();
         }
@@ -87,6 +102,9 @@ public final class KnowledgeAdvisor implements BaseAdvisor {
 
     @Override
     public ChatClientResponse after(ChatClientResponse response, AdvisorChain chain) {
+        if (AdvisorSwitch.isOff(response.context(), AdvisorSwitch.RAG)) {
+            return response;
+        }
         return retrieval.after(response, chain);
     }
 

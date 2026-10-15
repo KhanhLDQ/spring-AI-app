@@ -13,6 +13,7 @@ import java.time.Clock;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.TimeoutException;
 import java.util.function.IntSupplier;
@@ -24,12 +25,15 @@ import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.model.Generation;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 
 @Service
 class ChatService {
 
     private static final Logger log = LoggerFactory.getLogger(ChatService.class);
     private static final Duration TURN_TIMEOUT = Duration.ofSeconds(60);
+    private static final Duration OBSERVATION_WAIT = Duration.ofSeconds(2);
 
     private final ChatClient chatClient;
     private final TraceCollector traces;
@@ -48,7 +52,8 @@ class ChatService {
         this.clock = clock;
     }
 
-    Flux<ChatEvent> stream(AuthenticatedUser user, UUID conversationId, String message) {
+    /** {@code off}: pipeline parts skipped for this message ({@link AdvisorSwitch}); the advisors read it from their context. */
+    Flux<ChatEvent> stream(AuthenticatedUser user, UUID conversationId, String message, Set<String> off) {
         if (usage.exhausted()) {
             log.warn("Chat turn refused: budget of {} USD is spent", usage.limitUsd());
             return Flux.just(new ChatEvent.Error("The demo budget ($%s) is spent, so the model is paused. Raise kefir.budget.limit-usd to continue."
@@ -62,13 +67,15 @@ class ChatService {
         String memoryKey = memoryKey(user, conversationId);
         Map<String, Object> toolContext = ToolCaller.contextFor(user, memoryKey);
 
-        ChatClient.ChatClientRequestSpec prompt = chatClient.prompt()
-                .system(SystemPrompts.forRole(user.role(), ShopTime.today(clock)))
+        ChatClient.ChatClientRequestSpec base = chatClient.prompt()
+                .system(SystemPrompts.forRole(user.role(), ShopTime.today(clock), !off.contains(AdvisorSwitch.TOOLS)))
                 .user(message)
                 .advisors(a -> a.param(TraceCollector.TRACE_ID_PARAM, traceId).param(ChatMemory.CONVERSATION_ID, memoryKey)
-                        .param(SemanticCacheAdvisor.ROLE_PARAM, user.role().name()))
-                .tools(catalogTools, orderTools)
-                .toolContext(toolContext);
+                        .param(SemanticCacheAdvisor.ROLE_PARAM, user.role().name())
+                        .param(AdvisorSwitch.OFF_PARAM, Set.copyOf(off)));
+        // Without tools the model is not told any exist, so it can only answer in words.
+        ChatClient.ChatClientRequestSpec prompt = off.contains(AdvisorSwitch.TOOLS)
+                ? base : base.tools(catalogTools, orderTools).toolContext(toolContext);
         Flux<ChatEvent> tokens = Flux.defer(() -> {
             RoundBreaks breaks = new RoundBreaks(() -> toolStepCount(traceId));
             return prompt.stream().chatResponse().mapNotNull(breaks::next).map(ChatEvent.Token::new);
@@ -76,7 +83,10 @@ class ChatService {
 
         return tokens
                 .timeout(TURN_TIMEOUT)
-                .concatWith(Flux.defer(() -> finish(traceId, startNanos)))
+                // Wait (off the reactive threads) for the model observation to stop, so its step and tokens are in.
+                .concatWith(Mono.fromRunnable(() -> traces.awaitObservations(traceId, OBSERVATION_WAIT))
+                        .subscribeOn(Schedulers.boundedElastic())
+                        .thenMany(Flux.defer(() -> finish(traceId, startNanos))))
                 .onErrorResume(error -> {
                     traces.finish(traceId);
                     log.warn("Chat turn failed: {}", error.getClass().getSimpleName());
@@ -146,6 +156,9 @@ class ChatService {
     }
 
     private static String cacheOutcome(List<TraceStep> steps) {
+        if (steps.stream().anyMatch(s -> "cache".equals(s.kind()) && Boolean.TRUE.equals(s.detail().get("off")))) {
+            return "OFF";
+        }
         boolean hit = steps.stream().anyMatch(s -> "cache".equals(s.kind()) && Boolean.TRUE.equals(s.detail().get("hit")));
         return hit ? "HIT" : "MISS";
     }

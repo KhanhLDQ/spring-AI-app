@@ -1,6 +1,7 @@
 package com.tommap.springaiapp.cache;
 
 import com.tommap.springaiapp.auth.Role;
+import com.tommap.springaiapp.chat.AdvisorSwitch;
 import com.tommap.springaiapp.trace.TraceCollector;
 import com.tommap.springaiapp.trace.TraceStep;
 import java.util.ArrayList;
@@ -57,6 +58,10 @@ public final class SemanticCacheAdvisor implements CallAdvisor, StreamAdvisor {
         if (turn == null) {
             return chain.nextCall(request);
         }
+        if (turn.cacheOff()) {
+            recordOff(turn);
+            return chain.nextCall(request);
+        }
         Lookup lookup = lookup(turn);
         if (lookup.hit()) {
             return responseOf(request, lookup.answer());
@@ -70,6 +75,10 @@ public final class SemanticCacheAdvisor implements CallAdvisor, StreamAdvisor {
     public Flux<ChatClientResponse> adviseStream(ChatClientRequest request, StreamAdvisorChain chain) {
         Turn turn = Turn.of(request).orElse(null);
         if (turn == null) {
+            return chain.nextStream(request);
+        }
+        if (turn.cacheOff()) {
+            recordOff(turn);
             return chain.nextStream(request);
         }
         // Embedding the question is a blocking call, so it runs off the reactive threads.
@@ -92,7 +101,8 @@ public final class SemanticCacheAdvisor implements CallAdvisor, StreamAdvisor {
 
     /** A hit also writes the exchange into the conversation, because the memory advisor never sees this turn. */
     private Lookup lookup(Turn turn) {
-        int earlier = chatMemory.get(turn.conversationId()).size();
+        // With memory off the answer cannot depend on earlier messages, and a hit must not write into the conversation.
+        int earlier = turn.memoryOff() ? 0 : chatMemory.get(turn.conversationId()).size();
         long start = System.nanoTime();
         Optional<SemanticCache.Match> nearest = cache.nearest(turn.question(), turn.role());
         long end = System.nanoTime();
@@ -112,7 +122,9 @@ public final class SemanticCacheAdvisor implements CallAdvisor, StreamAdvisor {
             return new Lookup(false, null, earlier);
         }
         String answer = nearest.get().answer();
-        chatMemory.add(turn.conversationId(), List.of(new UserMessage(turn.question()), new AssistantMessage(answer)));
+        if (!turn.memoryOff()) {
+            chatMemory.add(turn.conversationId(), List.of(new UserMessage(turn.question()), new AssistantMessage(answer)));
+        }
         return new Lookup(true, answer, earlier);
     }
 
@@ -169,6 +181,11 @@ public final class SemanticCacheAdvisor implements CallAdvisor, StreamAdvisor {
         return step.detail().get("chunks") instanceof List<?> chunks && !chunks.isEmpty();
     }
 
+    private void recordOff(Turn turn) {
+        long now = System.nanoTime();
+        record(turn, "cache", "Semantic cache: off", now, now, new LinkedHashMap<>(Map.of("off", true)));
+    }
+
     private void record(Turn turn, String kind, String title, long startNanos, long endNanos, Map<String, Object> detail) {
         long startMs = (startNanos - traces.startNanos(turn.traceId())) / 1_000_000;
         traces.record(turn.traceId(), new TraceStep(kind, title, "SemanticCacheAdvisor", startMs,
@@ -206,7 +223,8 @@ public final class SemanticCacheAdvisor implements CallAdvisor, StreamAdvisor {
     }
 
     /** Everything the advisor needs from the request; absent when the call did not come from the chat endpoint. */
-    private record Turn(String question, Role role, String traceId, String conversationId) {
+    private record Turn(String question, Role role, String traceId, String conversationId, boolean cacheOff,
+                        boolean memoryOff) {
 
         static Optional<Turn> of(ChatClientRequest request) {
             Map<String, Object> context = request.context();
@@ -217,7 +235,8 @@ public final class SemanticCacheAdvisor implements CallAdvisor, StreamAdvisor {
                     || question == null || question.isBlank()) {
                 return Optional.empty();
             }
-            return Optional.of(new Turn(question, Role.valueOf(role), traceId, conversationId));
+            return Optional.of(new Turn(question, Role.valueOf(role), traceId, conversationId,
+                    AdvisorSwitch.isOff(context, AdvisorSwitch.CACHE), AdvisorSwitch.isOff(context, AdvisorSwitch.MEMORY)));
         }
     }
 }

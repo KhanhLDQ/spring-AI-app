@@ -19,6 +19,7 @@ import org.springframework.stereotype.Component;
 class TraceObservationHandler implements ObservationHandler<Observation.Context> {
 
     private static final String START_KEY = "kefir.startNanos";
+    private static final String OPEN_KEY = "kefir.openTrace";
     private static final int MAX_TEXT = 300;
 
     private final TraceCollector collector;
@@ -35,15 +36,29 @@ class TraceObservationHandler implements ObservationHandler<Observation.Context>
     @Override
     public void onStart(Observation.Context context) {
         context.put(START_KEY, System.nanoTime());
+        String traceId = traceId(context);
+        if (traceId != null) {
+            context.put(OPEN_KEY, traceId);
+            collector.opened(traceId);
+        }
     }
 
     @Override
     public void onStop(Observation.Context context) {
         String traceId = traceId(context);
         Long start = context.get(START_KEY);
-        if (traceId == null || start == null) {
-            return;
+        try {
+            if (traceId != null && start != null) {
+                recordStep(context, traceId, start);
+            }
+        } finally {
+            if (context.get(OPEN_KEY) instanceof String opened) {
+                collector.closed(opened);
+            }
         }
+    }
+
+    private void recordStep(Observation.Context context, String traceId, long start) {
         long traceStart = collector.startNanos(traceId);
         long startMs = (start - traceStart) / 1_000_000;
         long durMs = (System.nanoTime() - start) / 1_000_000;

@@ -36,12 +36,20 @@ final class ConversationMemoryAdvisor implements CallAdvisor, StreamAdvisor {
 
     @Override
     public ChatClientResponse adviseCall(ChatClientRequest request, CallAdvisorChain chain) {
+        if (AdvisorSwitch.isOff(request.context(), AdvisorSwitch.MEMORY)) {
+            recordOff(request);
+            return chain.nextCall(request);
+        }
         recordStep(request);
         return memory.adviseCall(request, chain);
     }
 
     @Override
     public Flux<ChatClientResponse> adviseStream(ChatClientRequest request, StreamAdvisorChain chain) {
+        if (AdvisorSwitch.isOff(request.context(), AdvisorSwitch.MEMORY)) {
+            recordOff(request);
+            return chain.nextStream(request);
+        }
         recordStep(request);
         return memory.adviseStream(request, chain);
     }
@@ -54,6 +62,16 @@ final class ConversationMemoryAdvisor implements CallAdvisor, StreamAdvisor {
     @Override
     public int getOrder() {
         return memory.getOrder();
+    }
+
+    /** Switched off: no history is loaded and nothing from this turn is saved. */
+    private void recordOff(ChatClientRequest request) {
+        if (request.context().get(TraceCollector.TRACE_ID_PARAM) instanceof String traceId) {
+            Map<String, Object> detail = new LinkedHashMap<>();
+            detail.put("off", true);
+            traces.record(traceId, new TraceStep("memory", "Chat memory: off", "MessageChatMemoryAdvisor",
+                    (System.nanoTime() - traces.startNanos(traceId)) / 1_000_000, 0, detail));
+        }
     }
 
     private void recordStep(ChatClientRequest request) {

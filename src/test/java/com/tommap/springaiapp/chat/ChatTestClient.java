@@ -13,6 +13,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.node.ObjectNode;
 import tools.jackson.databind.json.JsonMapper;
 
 /** Drives the chat endpoints like the frontend does: log in, send a message, read the SSE events. */
@@ -38,8 +39,19 @@ public final class ChatTestClient {
     }
 
     Reply chat(String token, UUID conversationId, String message) throws Exception {
+        return chat(token, conversationId, message, List.of());
+    }
+
+    /** {@code off}: pipeline parts to switch off for this message, as the chat screen's toggles send them. */
+    Reply chat(String token, UUID conversationId, String message, List<String> off) throws Exception {
+        String json = requestJson(conversationId, message);
+        if (!off.isEmpty()) {
+            ObjectNode node = (ObjectNode) JSON.readTree(json);
+            off.forEach(node.putArray("off")::add);
+            json = node.toString();
+        }
         MvcResult started = mvc.perform(post("/api/chat/stream").header("Authorization", "Bearer " + token)
-                        .contentType(MediaType.APPLICATION_JSON).content(requestJson(conversationId, message)))
+                        .contentType(MediaType.APPLICATION_JSON).content(json))
                 .andExpect(request().asyncStarted()).andReturn();
         // SSE is always UTF-8, but the content type carries no charset and MockMvc would decode as ISO-8859-1.
         String body = mvc.perform(asyncDispatch(started)).andExpect(status().isOk())

@@ -43,6 +43,7 @@ final class MockScript {
     private static final JsonMapper JSON = JsonMapper.builder().build();
     private static final Pattern NON_ASCII = Pattern.compile("[^\\x00-\\x7F]");
     private static final String FALLBACK = "This is a simulated answer (mock mode, no real model call).";
+    static final String NO_TOOLS = "I can't place or change orders right now: no tools are available (mock mode).";
     private static final Pattern CANCEL = Pattern.compile("(?:cancel|huỷ|hủy)\\s+(?:order|đơn)?\\s*#?(\\d+)");
     private static final Pattern CHANGE = Pattern.compile("(?:change|update)\\s+order\\s+#?(\\d+)\\s+to\\s+(\\d+)");
     private static final Pattern FOLLOW_UP = Pattern.compile(

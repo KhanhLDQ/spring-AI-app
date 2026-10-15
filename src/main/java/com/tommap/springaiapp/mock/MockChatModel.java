@@ -98,7 +98,11 @@ public class MockChatModel implements ChatModel {
         return ChatGenerationMetadata.builder().finishReason(reply.hasToolCalls() ? "tool_use" : "end_turn").build();
     }
 
+    /** Like a real model, it cannot call a tool the request did not offer, so it answers in words instead. */
     private MockScript.Reply reply(Prompt prompt) {
-        return MockScript.replyTo(prompt.getInstructions());
+        MockScript.Reply reply = MockScript.replyTo(prompt.getInstructions());
+        boolean toolsOffered = prompt.getOptions() instanceof ToolCallingChatOptions options
+                && options.getToolCallbacks() != null && !options.getToolCallbacks().isEmpty();
+        return reply.hasToolCalls() && !toolsOffered ? MockScript.Reply.text(MockScript.NO_TOOLS) : reply;
     }
 }
