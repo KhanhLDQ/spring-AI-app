@@ -7,7 +7,8 @@ export type StepKind = "cache" | "cachewrite" | "memory" | "route" | "rag" | "mo
 
 /** Pipeline parts the chat screen can switch off for a message; the backend accepts exactly these names. */
 export type Switch = "memory" | "cache" | "rag" | "tools";
-export const SWITCHES: Switch[] = ["memory", "cache", "rag", "tools"];
+/** In the order the demo turns them on: memory, then RAG, then the cache (it only stores RAG answers), then tools. */
+export const SWITCHES: Switch[] = ["memory", "rag", "cache", "tools"];
 
 export interface TraceStep {
   kind: StepKind;

@@ -33,7 +33,8 @@ export function ChatPage({ onOpenOrders }: { onOpenOrders: () => void }) {
   const [selected, setSelected] = useState(0);
   const inspectorWidth = usePanelSize("kefir.size.inspector", 435, 300, 900);
   const scriptHeight = usePanelSize("kefir.size.scripts", 99, 34, 420);
-  const [off, setOff] = useState<ReadonlySet<Switch>>(new Set());
+  // The demo starts from a bare model and turns the advisors on one by one, so a new page opens with all off.
+  const [off, setOff] = useState<ReadonlySet<Switch>>(() => new Set(SWITCHES));
   const toggle = (name: Switch) =>
     setOff((now) => {
       const next = new Set(now);
