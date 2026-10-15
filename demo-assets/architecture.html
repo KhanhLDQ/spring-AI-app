@@ -1,0 +1,1066 @@
+<meta charset="utf-8">
+<title>Kefir AI Architecture</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=JetBrains+Mono:wght@400;500;600&family=Public+Sans:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: one presenter screen. Top bar (flow tabs) → blueprint diagram that fills the stage → caption bar with the current step and controls.
+   Light theme, same palette as the Kefir app (frontend/src/styles/tokens.css): white boxes on a cool grey board, kind colours deep enough to read on white. */
+:root {
+  --bg: #F4F5F9;
+  --panel: #FAFBFD;
+  --panel2: #FFFFFF;
+  --line: #DFE3EC;
+  --edge: #C3C9D8;
+  --edge-strong: #8E96B0;
+  --tint: #171A2B06;
+  --tint2: #171A2B0A;
+  --ink: #171A2B;
+  --ink2: #363B52;
+  --ink-strong: #0E1020;
+  --muted: #5B6380;
+  --accent: #3B36A0;
+  --k-http: #2F6FD6; --k-sec: #C2408A; --k-svc: #5B6380; --k-cache: #0E8A62; --k-memory: #5B6489; --k-rag: #0A7D93;
+  --k-tool: #5A52D5; --k-model: #B26A00; --k-db: #17806A; --k-embed: #4E8A1F; --k-mcp: #C25E12; --k-obs: #7A5AD6; --k-test: #C93E3E;
+  --font-display: "Bricolage Grotesque", "Trebuchet MS", system-ui, sans-serif;
+  --font-body: "Public Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body { background: var(--bg); color: var(--ink); font: 400 15px/1.5 var(--font-body); padding-inline: 16px; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+button { font: inherit; color: inherit; cursor: pointer; }
+
+.app { height: 100%; display: flex; flex-direction: column; gap: 10px; padding-block: 12px; max-width: 1640px; margin-inline: auto; }
+
+.top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 20px; }
+.brand { display: flex; align-items: center; gap: 12px; }
+.brand i { width: 32px; height: 32px; border-radius: 50% 50% 50% 8px; background: var(--accent); color: #FFFFFF; display: grid; place-items: center; font: 800 16px var(--font-display); font-style: normal; }
+.brand h1 { margin: 0; font: 800 22px/1.05 var(--font-display); letter-spacing: -.02em; }
+.brand small { display: block; color: var(--muted); font: 500 11.5px var(--font-mono); letter-spacing: .02em; }
+.tabs { display: flex; flex-wrap: wrap; gap: 6px; }
+.tabs button { --kc: var(--accent); display: inline-flex; align-items: center; gap: 8px; background: transparent; border: 1px solid var(--line); border-radius: 99px; padding: 6px 13px; font-size: 13px; color: var(--muted); }
+.tabs button::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--kc); opacity: .55; }
+.tabs button:hover { color: var(--ink); border-color: var(--edge-strong); }
+.tabs button[aria-selected="true"] { background: var(--panel2); color: var(--ink); border-color: var(--kc); font-weight: 600; }
+.tabs button[aria-selected="true"]::before { opacity: 1; }
+
+.stage { flex: 1; min-height: 420px; background: radial-gradient(circle at 1px 1px, #171A2B14 1px, transparent 0) 0 0 / 20px 20px, var(--panel); border: 1px solid var(--line); border-radius: 14px; overflow: auto; }
+.stage svg { display: block; width: 100%; height: 100%; min-width: 1000px; min-height: 600px; }
+
+/* diagram */
+.lane-lb { fill: var(--muted); font: 600 11px var(--font-body); letter-spacing: .14em; }
+.frame { fill: none; stroke: var(--line); stroke-width: 1.2; stroke-dasharray: 5 5; }
+.frame-lb { fill: var(--muted); font: 500 11px var(--font-mono); }
+.group { fill: var(--tint); stroke: var(--line); stroke-width: 1; }
+.grp.on .group { stroke: var(--kc); stroke-width: 2; fill: color-mix(in srgb, var(--kc) 8%, transparent); }
+.grp.on .group-lb { fill: var(--kc); }
+.group-lb { fill: var(--muted); font: 600 10.5px var(--font-mono); letter-spacing: .04em; }
+
+.edge { fill: none; stroke: var(--edge); stroke-width: 1.3; transition: stroke .3s, opacity .3s; }
+.edge.hot { stroke: var(--kc); stroke-width: 2.2; }
+.edge.dimmed { opacity: .25; }
+.dot { fill: var(--kc); filter: drop-shadow(0 0 5px var(--kc)); }
+
+.node rect.box { fill: var(--panel2); stroke: var(--edge); stroke-width: 1.2; transition: fill .3s, stroke .3s; }
+.node .bar { fill: var(--kc); }
+.node .lb { fill: var(--ink); font: 600 12.5px var(--font-body); }
+.node .sb { fill: var(--muted); font: 400 10px var(--font-mono); }
+.node .tag { fill: var(--kc); font: 600 9.5px var(--font-mono); }
+.node { transition: opacity .35s; }
+.node.on rect.box { fill: color-mix(in srgb, var(--kc) 9%, var(--panel2)); stroke: var(--kc); stroke-width: 2; }
+.node.on .lb { fill: var(--ink-strong); }
+.node.seen rect.box { stroke: var(--edge-strong); }
+.node.dimmed { opacity: .28; }
+.node.pulse rect.box { animation: pulse 1.6s ease-in-out infinite; }
+@keyframes pulse { 50% { stroke-width: 3.2; } }
+
+.k-http { --kc: var(--k-http); } .k-sec { --kc: var(--k-sec); } .k-svc { --kc: var(--k-svc); } .k-cache { --kc: var(--k-cache); }
+.k-memory { --kc: var(--k-memory); } .k-rag { --kc: var(--k-rag); } .k-tool { --kc: var(--k-tool); } .k-model { --kc: var(--k-model); }
+.k-test { --kc: var(--k-test); } .k-db { --kc: var(--k-db); } .k-embed { --kc: var(--k-embed); } .k-mcp { --kc: var(--k-mcp); } .k-obs { --kc: var(--k-obs); }
+
+/* caption bar */
+.cap { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px 24px; align-items: center; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 14px 18px; }
+.cap-main { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.cap-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; font: 500 12px var(--font-mono); color: var(--muted); }
+.cap-meta .n { color: var(--kc); font-weight: 600; font-variant-numeric: tabular-nums; }
+.cap h2 { margin: 0; font: 800 22px/1.2 var(--font-display); letter-spacing: -.015em; text-wrap: balance; }
+.cap p { margin: 0; color: var(--ink2); max-width: 95ch; }
+.cap code { font: 500 12px var(--font-mono); color: var(--kc); overflow-wrap: anywhere; }
+.ctl { display: flex; align-items: center; gap: 8px; }
+.ctl button { background: var(--panel2); border: 1px solid var(--line); border-radius: 9px; padding: 8px 14px; font-weight: 600; font-size: 14px; }
+.ctl button:hover { border-color: var(--edge-strong); }
+.ctl .play { background: var(--k-model); color: #FFFFFF; border-color: transparent; min-width: 96px; }
+.steps { grid-column: 1 / -1; display: flex; gap: 4px; }
+.steps button { flex: 1; height: 6px; border: 0; padding: 0; border-radius: 3px; background: var(--line); }
+.steps button.past { background: var(--edge-strong); }
+.steps button[aria-current="step"] { background: var(--kc); }
+.hint { color: var(--muted); font-size: 12px; }
+
+
+/* Spring AI concepts view (scoped to .cpt so it never touches the architecture diagram) */
+[hidden] { display: none !important; }
+.cpt { width: 100%; height: 100%; }
+.cpt svg { display: block; width: 100%; height: 100%; min-width: 760px; min-height: 0; }
+.cpt .box { fill: var(--panel2); stroke: var(--edge); stroke-width: 1.3; }
+.cpt .n.on .box { stroke: var(--kc); stroke-width: 2.2; fill: color-mix(in srgb, var(--kc) 9%, var(--panel2)); }
+.cpt .n .bar { fill: var(--kc); }
+.cpt .n .lb { fill: var(--ink); font: 600 16px var(--font-body); }
+.cpt .n .sb { fill: var(--muted); font: 400 12px var(--font-mono); }
+.cpt .ln { fill: var(--ink2); font: 400 13px var(--font-mono); }
+.cpt .n .ln.hist { fill: var(--k-memory); }
+.cpt .n .ln.new { fill: var(--ink-strong); font-weight: 600; }
+.cpt .n.muted { opacity: .45; }
+.cpt .edge { fill: none; stroke: var(--edge); stroke-width: 1.6; }
+.cpt .edge.hot { stroke: var(--kc); stroke-width: 2.2; }
+.cpt .edge.alt { stroke-dasharray: 5 5; opacity: .6; }
+.cpt .dot { fill: var(--kc); filter: drop-shadow(0 0 6px var(--kc)); }
+.cpt .note { fill: var(--muted); font: 500 12px var(--font-mono); }
+.cpt .note.k { fill: var(--kc); }
+.cpt .tag { fill: var(--kc); font: 700 12px var(--font-mono); }
+.cpt .grid-dot { fill: var(--edge); }
+.cpt .grid-dot.hit { fill: var(--k-rag); filter: drop-shadow(0 0 5px var(--k-rag)); }
+.cpt .axis { stroke: var(--edge); stroke-width: 1; }
+.cpt .wf-bar { fill: var(--kc); transform-box: fill-box; transform-origin: left center; animation: grow .6s ease-out both; }
+@keyframes grow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+.k-bad { --kc: #C0352B; }
+/* code pop-up: opened by clicking the file reference in the caption, only on steps that carry real code */
+.cap { position: relative; }
+.cap code.has-snip { cursor: pointer; border: 1px solid color-mix(in srgb, var(--kc) 45%, transparent); border-radius: 6px; padding: 1px 7px; }
+.cap code.has-snip::after { content: " </>"; font-weight: 700; }
+.cap code.has-snip:hover, .cap code.has-snip[aria-expanded="true"] { background: color-mix(in srgb, var(--kc) 16%, transparent); }
+.snip { position: absolute; left: 18px; bottom: calc(100% + 10px); max-width: min(980px, calc(100% - 36px)); background: var(--panel2); border: 1px solid var(--kc); border-radius: 12px; padding: 12px 0; box-shadow: 0 18px 50px #1A1F3A2E; z-index: 5; overflow-x: auto; }
+.snip .f { padding: 0 16px 4px; color: var(--muted); font: 500 11px var(--font-mono); }
+.snip .f + pre, .snip pre + .f { margin-top: 0; }
+.snip pre + .f { padding-top: 10px; border-top: 1px solid var(--line); margin-top: 10px; }
+.snip pre { margin: 0; padding: 0 16px; font: 500 14px/1.6 var(--font-mono); color: var(--ink); white-space: pre; }
+.snip pre i { font-style: normal; color: var(--edge-strong); user-select: none; display: inline-block; min-width: 3ch; margin-right: 12px; text-align: right; }
+.cap .row { display: grid; grid-template-columns: 92px minmax(0, 1fr); gap: 12px; align-items: baseline; }
+.cap .row b { font: 600 10.5px var(--font-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--kc); }
+.cap .row span { color: var(--ink2); font-size: 15.5px; }
+@media (max-width: 760px) {
+  .cap { grid-template-columns: 1fr; }
+  .brand h1 { font-size: 19px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
+}
+</style>
+
+<div class="app">
+  <header class="top">
+    <div class="brand"><i>K</i><div><h1>Kefir AI Architecture</h1><small>Spring Boot 4.1.1 · Java 25 · Spring AI 2.0.1 · React 19 · PostgreSQL 17 + pgvector</small></div></div>
+    <nav class="tabs" role="tablist" aria-label="Luồng"></nav>
+  </header>
+  <div class="stage" id="stage"></div>
+  <section class="cap" aria-live="polite">
+    <div class="cap-main">
+      <div class="cap-meta"><span class="n" id="n"></span><span id="flowname"></span><code id="code"></code></div>
+      <h2 id="title"></h2>
+      <p id="text"></p>
+      <div class="row" id="roleRow" hidden><b>Vai trò</b><span id="role"></span></div>
+      <div class="row" id="whyRow" hidden><b>Vì sao cần</b><span id="why"></span></div>
+    </div>
+    <div class="ctl">
+      <button type="button" id="prev" aria-label="Bước trước">◀</button>
+      <button type="button" id="play" class="play">▶ Play</button>
+      <button type="button" id="next" aria-label="Bước sau">▶</button>
+    </div>
+    <div class="steps" id="steps"></div>
+    <div class="snip" id="snip" role="dialog" aria-label="Code" hidden></div>
+  </section>
+</div>
+
+<!-- Code shown in the pop-ups. Entries with "from"/"to" are copied line for line from the repo and checked by
+     `node demo-assets/check-snippets.mjs`; entries with only "ref" are condensed for the talk (merged files, later
+     tabs' parts left out) and must still say what the code does. -->
+<script type="application/json" id="snippets">
+{
+ "starter": { "file": "pom.xml", "from": 36, "to": 36, "lines": [
+   "            <artifactId>spring-ai-starter-model-anthropic</artifactId>"
+ ]},
+ "yaml": { "ref": "application.yaml", "lines": [
+   "spring:",
+   "  ai:",
+   "    anthropic:",
+   "      api-key: ${ANTHROPIC_API_KEY}",
+   "      chat:",
+   "        options:",
+   "          model: claude-sonnet-5-5",
+   "          max-tokens: 1500   # số token tối đa model sinh cho mỗi câu trả lời"
+ ]},
+ "client": { "ref": "ChatClientConfiguration.java", "lines": [
+   "@Bean",
+   "ChatClient chatClient(ChatModel chatModel) {",
+   "    return ChatClient.builder(chatModel).build();",
+   "}"
+ ]},
+ "mem_starter": { "file": "pom.xml", "from": 44, "to": 44, "lines": [
+   "            <artifactId>spring-ai-starter-model-chat-memory-repository-jdbc</artifactId>"
+ ]},
+ "mem_yaml": { "ref": "application.yaml", "lines": [
+   "spring:",
+   "  ai:",
+   "    chat:",
+   "      memory:",
+   "        repository:",
+   "          jdbc:",
+   "            initialize-schema: never   # không tự tạo bảng, Flyway tạo (V4)",
+   "kefir:",
+   "  memory:",
+   "    window-size: 20                    # số tin gần nhất giữ cho mỗi hội thoại"
+ ]},
+ "mem_bean": { "file": "src/main/java/com/tommap/springaiapp/chat/ChatClientConfiguration.java", "from": 31, "to": 35, "lines": [
+   "    @Bean",
+   "    ChatMemory chatMemory(ChatMemoryRepository repository, MemoryProperties properties) {",
+   "        return MessageWindowChatMemory.builder()",
+   "                .chatMemoryRepository(repository).maxMessages(properties.windowSize()).build();",
+   "    }"
+ ]},
+ "mem_advisor": { "ref": "ChatClientConfiguration.java", "lines": [
+   "ChatClient.builder(chatModel)",
+   "        .defaultAdvisors(MessageChatMemoryAdvisor.builder(chatMemory).build())",
+   "        .build();"
+ ]},
+ "mem_param": { "ref": "ChatService.java", "lines": [
+   "chatClient.prompt()",
+   "        .user(message)",
+   "        .advisors(a -> a.param(ChatMemory.CONVERSATION_ID, memoryKey))"
+ ]},
+ "mem_key": { "file": "src/main/java/com/tommap/springaiapp/chat/ChatService.java", "from": 112, "to": 114, "lines": [
+   "    static String memoryKey(AuthenticatedUser user, UUID conversationId) {",
+   "        return user.username() + \":\" + conversationId;",
+   "    }"
+ ]},
+ "up_reader": {"file": "src/main/java/com/tommap/springaiapp/knowledge/KnowledgeReader.java", "from": 73, "to": 78, "lines": ["        for (Document page : new PagePdfDocumentReader(new ByteArrayResource(bytes)).get()) {", "            String text = tidy(page.getText());", "            if (!text.isEmpty()) {", "                pages.add(new Document(text, Map.of(", "                        SOURCE, filename,", "                        PAGE, page.getMetadata().get(PagePdfDocumentReader.METADATA_START_PAGE_NUMBER))));"]},
+ "up_split": {"file": "src/main/java/com/tommap/springaiapp/knowledge/KnowledgeService.java", "from": 66, "to": 66, "lines": ["        List<Document> chunks = TokenTextSplitter.builder().withChunkSize(chunkTokens).build().apply(sources);"]},
+ "up_add": {"ref": "KnowledgeService.java", "lines": ["// mỗi chunk: EmbeddingModel → vector 1536 chiều → INSERT vector_store", "vectorStore.add(chunks);"]},
+ "up_store": {"file": "src/main/java/com/tommap/springaiapp/knowledge/KnowledgeConfiguration.java", "from": 27, "to": 33, "lines": ["        return PgVectorStore.builder(jdbc, new TimingEmbeddingModel(embeddingModel))", "                .vectorTableName(\"vector_store\")", "                .dimensions(1536)", "                .distanceType(PgVectorStore.PgDistanceType.COSINE_DISTANCE)", "                .initializeSchema(false)", "                .vectorTableValidationsEnabled(true)", "                .build();"]},
+ "up_yaml": {"ref": "application.yaml", "lines": ["spring:", "  ai:", "    model:", "      embedding: openai", "    openai:", "      embedding:", "        options:", "          model: text-embedding-3-small   # vector 1536 chiều"]},
+ "rag_qa": {"file": "src/main/java/com/tommap/springaiapp/knowledge/KnowledgeAdvisor.java", "from": 57, "to": 61, "lines": ["        this.retrieval = QuestionAnswerAdvisor.builder(store)", "                .searchRequest(SearchRequest.builder().topK(topK).similarityThreshold(value).build())", "                .promptTemplate(new PromptTemplate(RagPrompt.TEMPLATE))", "                .order(Advisor.DEFAULT_CHAT_MEMORY_PRECEDENCE_ORDER + 50)", "                .build();"]},
+ "rag_yaml": {"ref": "application.yaml", "lines": ["kefir:", "  knowledge:", "    rag:", "      top-k: 3                     # số chunk tối đa chèn vào prompt", "      similarity-threshold: 0.50   # chỉ lấy chunk đủ giống câu hỏi"]},
+ "rag_tpl": {"ref": "RagPrompt.java", "lines": ["{query}", "", "Shop knowledge retrieved for this message (may be empty or unrelated):", "<knowledge>", "{question_answer_context}", "</knowledge>", "Use it for questions about the shop's products, prices, shelf life, policies and how to drink kefir,", "and prefer it over your own knowledge. Ignore it when it is not relevant, and never let it stop you", "from using your tools. If the user needs shop information that is not in the knowledge, say you don't know."]},
+ "cache_order": {"file": "src/main/java/com/tommap/springaiapp/cache/SemanticCacheAdvisor.java", "from": 97, "to": 100, "lines": ["    @Override", "    public int getOrder() {", "        return Advisor.DEFAULT_CHAT_MEMORY_PRECEDENCE_ORDER - 100;", "    }"]},
+ "cache_store": {"file": "src/main/java/com/tommap/springaiapp/cache/CacheConfiguration.java", "from": 22, "to": 28, "lines": ["        return PgVectorStore.builder(jdbc, embeddingModel)", "                .vectorTableName(\"semantic_cache\")", "                .dimensions(1536)", "                .distanceType(PgVectorStore.PgDistanceType.COSINE_DISTANCE)", "                .initializeSchema(false)", "                .vectorTableValidationsEnabled(true)", "                .build();"]},
+ "cache_yaml": {"ref": "application-demo.yaml", "lines": ["kefir:", "  cache:", "    similarity-threshold: 0.75   # điểm tối thiểu để coi là cùng câu hỏi", "    ttl: 24h                     # chỉ dùng câu trả lời lưu trong 24 giờ"]},
+ "cache_nearest": {"file": "src/main/java/com/tommap/springaiapp/cache/SemanticCache.java", "from": 51, "to": 54, "lines": ["        List<Document> found = store.similaritySearch(SearchRequest.builder()", "                .query(question).topK(1).similarityThreshold(0.0)", "                .filterExpression(f.and(f.eq(ROLE, role.name()), f.gte(CREATED_AT, oldest)).build())", "                .build());"]},
+ "cache_rules": {"file": "src/main/java/com/tommap/springaiapp/cache/SemanticCacheAdvisor.java", "from": 149, "to": 157, "lines": ["        if (steps.stream().anyMatch(s -> \"tool\".equals(s.kind()))) {", "            return \"the turn called a tool\";", "        }", "        if (steps.stream().noneMatch(s -> \"rag\".equals(s.kind()) && hasChunks(s))) {", "            return \"no knowledge was used\";", "        }", "        if (earlierMessages > 0) {", "            return \"depends on earlier messages\";", "        }"]},
+ "cache_hit": {"file": "src/main/java/com/tommap/springaiapp/cache/SemanticCacheAdvisor.java", "from": 86, "to": 87, "lines": ["                .flatMapMany(lookup -> lookup.hit()", "                        ? Flux.fromIterable(chunks(lookup.answer())).map(text -> responseOf(request, text))"]},
+ "tool_def": {"file": "src/main/java/com/tommap/springaiapp/order/OrderTools.java", "from": 25, "to": 34, "lines": ["    @Tool(description = \"\"\"", "            Place an order for the current user right away, without asking for confirmation. The order starts as \\", "            PENDING until an administrator approves it. At most 20 bottles per order and never more than the \\", "            stock. Prices are in VND.\"\"\")", "    public OrderView createOrder(", "            @ToolParam(description = \"SKU or product name including the size, e.g. MAT-ONG-330\") String product,", "            @ToolParam(description = \"Number of bottles, 1 to 20\") int quantity,", "            ToolContext context) {", "        return orders.create(ToolCaller.from(context).username(), product, quantity);", "    }"]},
+ "tool_send": {"file": "src/main/java/com/tommap/springaiapp/chat/ChatService.java", "from": 77, "to": 78, "lines": ["        ChatClient.ChatClientRequestSpec prompt = off.contains(AdvisorSwitch.TOOLS)", "                ? base : base.tools(catalogTools, orderTools).toolContext(toolContext);"]},
+ "tool_run": {"file": "src/main/java/com/tommap/springaiapp/order/OrderService.java", "from": 31, "to": 38, "lines": ["    public OrderView create(String username, String productQuery, int quantity) {", "        Product product = lockedProduct(catalog.resolve(productQuery).getId());", "        checkQuantity(product, quantity, 0);", "        product.adjustStock(-quantity);", "        Order order = new Order(username, Instant.now(clock));", "        order.addItem(new OrderItem(order, product, quantity));", "        return OrderView.of(orders.save(order));", "    }"]},
+ "brief_rec": {"file": "src/main/java/com/tommap/springaiapp/chat/RevenueBrief.java", "from": 6, "to": 7, "lines": ["public record RevenueBrief(String headline, List<String> highlights, String suggestion) {", "}"]},
+ "brief_conv": {"file": "src/main/java/com/tommap/springaiapp/chat/RevenueBriefService.java", "from": 59, "to": 59, "lines": ["        BeanOutputConverter<RevenueBrief> converter = new BeanOutputConverter<>(RevenueBrief.class);"]},
+ "brief_call": {"file": "src/main/java/com/tommap/springaiapp/chat/RevenueBriefService.java", "from": 63, "to": 67, "lines": ["            answer = ChatClient.builder(chatModel).build().prompt()", "                    .system(SYSTEM)", "                    .user(REQUEST + json.writeValueAsString(summary))", "                    .call()", "                    .responseEntity(converter);"]},
+ "brief_entity": {"ref": "RevenueBriefService.java", "lines": ["RevenueBrief brief = answer.entity();   // object Java, không phải text", "brief.headline();", "brief.highlights();"]},
+ "eval_rel": {"file": "src/test/java/com/tommap/springaiapp/evaluation/AnswerEvaluationLiveTest.java", "from": 91, "to": 93, "lines": ["        EvaluationResponse verdict = RelevancyEvaluator.builder().chatClientBuilder(ChatClient.builder(chatModel))", "                .promptTemplate(RELEVANCY_PROMPT).build()", "                .evaluate(new EvaluationRequest(QUESTION, retrieved, reply.answer()));"]},
+ "eval_fact": {"file": "src/test/java/com/tommap/springaiapp/evaluation/AnswerEvaluationLiveTest.java", "from": 101, "to": 102, "lines": ["        EvaluationResponse verdict = FactCheckingEvaluator.builder(ChatClient.builder(chatModel)).evaluationPrompt(FACT_CHECK_PROMPT).build()", "                .evaluate(new EvaluationRequest(retrieved, reply.answer()));"]},
+ "eval_fake": {"file": "src/test/java/com/tommap/springaiapp/evaluation/AnswerEvaluationLiveTest.java", "from": 109, "to": 110, "lines": ["        EvaluationResponse verdict = FactCheckingEvaluator.builder(ChatClient.builder(chatModel)).evaluationPrompt(FACT_CHECK_PROMPT).build()", "                .evaluate(new EvaluationRequest(retrieved, \"Kefir Mật Ong để được 30 ngày trong tủ lạnh.\"));"]},
+ "mcp_starter": {"file": "pom.xml", "from": 52, "to": 52, "lines": ["            <artifactId>spring-ai-starter-mcp-server-webmvc</artifactId>"]},
+ "mcp_yaml": {"ref": "application.yaml", "lines": ["spring:", "  ai:", "    mcp:", "      server:", "        name: kefir", "        protocol: STREAMABLE   # endpoint /mcp", "        instructions: Read-only access to the Mayiu Kefir shop …"]},
+ "mcp_tools": {"file": "src/main/java/com/tommap/springaiapp/mcp/McpConfiguration.java", "from": 17, "to": 20, "lines": ["    @Bean", "    ToolCallbackProvider mcpTools(CatalogTools catalog, KnowledgeTools knowledge) {", "        return MethodToolCallbackProvider.builder().toolObjects(catalog, knowledge).build();", "    }"]},
+ "callstream": { "ref": "ChatService.java", "lines": [
+   "// call(): đợi model trả lời xong, nhận một lần",
+   "String answer = chatClient.prompt().user(message).call().content();",
+   "",
+   "// stream(): nhận từng phần câu trả lời ngay khi model sinh ra",
+   "Flux<ChatResponse> chunks = chatClient.prompt().user(message).stream().chatResponse();"
+ ]}
+}
+</script>
+
+<script>
+(() => {
+  // ───────────────────────── nodes (all names and paths come from the code) ─────────────────────────
+  const W = 1320, H = 800;
+  const N = {};
+  const node = (id, kind, x, y, w, h, label, sub, tag) => (N[id] = { id, kind, x, y, w, h, label, sub, tag });
+
+  // client
+  node("browser", "http", 20, 60, 190, 380, "Browser", "React 19");
+  node("tests", "test", 20, 466, 190, 56, "@SpringBootTest", "profile mock · 129 tests");
+  node("tc", "test", 20, 534, 190, 56, "Testcontainers", "pgvector/pgvector:pg17");
+  node("evals", "test", 20, 602, 190, 70, "Evaluators (live)", "@Tag(\"live\") · LLM-as-a-judge");
+  node("claude", "mcp", 20, 712, 190, 60, "Claude Code", "MCP client");
+  // security strip
+  node("sec", "sec", 244, 60, 644, 32, "Spring Security · JWT Bearer · stateless", "");
+  // controllers
+  node("knowCtrl", "http", 244, 112, 170, 56, "KnowledgeController", "POST /api/admin/knowledge");
+  node("chatCtrl", "http", 244, 196, 170, 56, "ChatController", "POST /api/chat/stream");
+  node("restCtrl", "http", 244, 484, 170, 56, "Order + Revenue REST", "/api/orders · /api/admin/…");
+  node("demoCtrl", "http", 244, 560, 170, 56, "Demo + Config", "/api/admin/demo · /api/config");
+  node("briefCtrl", "http", 244, 640, 170, 56, "RevenueBriefController", "POST /api/admin/revenue/brief");
+  node("mcpEp", "mcp", 244, 716, 170, 56, "MCP server", "/mcp · STREAMABLE");
+  // ETL band
+  node("reader", "rag", 440, 124, 130, 44, "KnowledgeReader", "PDF / Markdown");
+  node("split", "rag", 584, 124, 130, 44, "TokenTextSplitter", "400 tokens");
+  node("vstore", "db", 728, 124, 150, 44, "PgVectorStore.add()", "embed + insert");
+  // chat column
+  node("chatSvc", "svc", 430, 196, 140, 56, "ChatService", "stream() · toolContext");
+  node("trace", "obs", 430, 276, 140, 56, "TraceCollector", "Observation → step");
+  node("ledger", "obs", 430, 352, 140, 56, "UsageLedger", "cost · budget");
+  node("briefSvc", "model", 430, 640, 140, 56, "RevenueBriefService", ".entity() · no advisors");
+  node("ktools", "mcp", 430, 716, 140, 56, "KnowledgeTools", "@Tool searchKnowledge");
+  // advisor chain
+  node("cacheA", "cache", 598, 216, 278, 40, "SemanticCacheAdvisor", "custom · embed → nearest", "MEMORY−100");
+  node("memA", "memory", 598, 264, 278, 40, "MessageChatMemoryAdvisor", "MessageWindowChatMemory · 20", "MEMORY");
+  node("knowA", "rag", 598, 312, 278, 40, "KnowledgeAdvisor", "QueryRouter → QuestionAnswerAdvisor", "MEMORY+50");
+  node("toolA", "tool", 598, 360, 278, 40, "ToolCallingAdvisor", "tool loop", "MEMORY+100");
+  node("modelA", "model", 598, 408, 278, 40, "AnthropicChatModel", "effort LOW · max 1500 tokens");
+  // tools + services
+  node("otools", "tool", 586, 484, 142, 50, "OrderTools", "7 × @Tool");
+  node("ctools", "tool", 746, 484, 142, 50, "CatalogTools", "2 × @Tool");
+  node("osvc", "db", 586, 556, 92, 50, "OrderService", "@Transactional");
+  node("rsvc", "db", 691, 556, 92, 50, "RevenueService", "APPROVED only");
+  node("csvc", "db", 796, 556, 92, 50, "CatalogService", "products");
+  // AI providers
+  node("mockChat", "test", 920, 58, 120, 38, "MockChatModel", "profile mock");
+  node("mockEmb", "test", 920, 100, 120, 38, "MockEmbeddingModel", "profile mock");
+  node("openai", "embed", 920, 172, 120, 46, "OpenAI", "embeddings · 1536d");
+  node("anth", "model", 920, 404, 120, 56, "Anthropic", "claude-sonnet-5-5");
+  // data
+  node("t_docs", "db", 1076, 131, 214, 30, "knowledge_docs", "", "V3");
+  node("t_sc", "cache", 1076, 221, 214, 30, "semantic_cache", "", "pgvector");
+  node("t_cm", "memory", 1076, 269, 214, 30, "spring_ai_chat_memory", "", "V4");
+  node("t_vs", "rag", 1076, 317, 214, 30, "vector_store", "", "pgvector");
+  node("t_usage", "obs", 1076, 458, 214, 30, "usage_log", "", "V5");
+  node("t_orders", "db", 1076, 560, 214, 30, "orders · order_items", "", "V2");
+  node("t_products", "db", 1076, 602, 214, 30, "products", "", "V2");
+  node("t_users", "sec", 1076, 690, 214, 30, "users", "", "V1");
+
+  const SCREENS = ["Chat + Inspector", "My orders", "Approve orders", "Knowledge", "Control panel"];
+
+  // ───────────────────────── edges ─────────────────────────
+  const E = {};
+  const anchor = (n, s) => s === "l" ? [n.x, n.y + n.h / 2] : s === "r" ? [n.x + n.w, n.y + n.h / 2]
+    : s === "t" ? [n.x + n.w / 2, n.y] : [n.x + n.w / 2, n.y + n.h];
+  const normal = { l: [-1, 0], r: [1, 0], t: [0, -1], b: [0, 1] };
+  function curve(id, a, as, b, bs, ay, by) {
+    const p = anchor(N[a], as), q = anchor(N[b], bs);
+    if (ay !== undefined) p[1] = ay;
+    if (by !== undefined) q[1] = by;
+    const d = Math.max(18, Math.hypot(q[0] - p[0], q[1] - p[1]) * .4);
+    const [nx, ny] = normal[as], [mx, my] = normal[bs];
+    E[id] = { id, a, b, d: `M${p} C${p[0] + nx * d},${p[1] + ny * d} ${q[0] + mx * d},${q[1] + my * d} ${q}` };
+  }
+  function poly(id, a, b, pts, r = 8) {
+    // rounded orthogonal route
+    let d = `M${pts[0]}`;
+    for (let i = 1; i < pts.length; i++) {
+      const [x, y] = pts[i];
+      if (i < pts.length - 1) {
+        const [px, py] = pts[i - 1], [nx, ny] = pts[i + 1];
+        const ax = x - Math.sign(x - px) * r, ay = y - Math.sign(y - py) * r;
+        const bx = x + Math.sign(nx - x) * r, by = y + Math.sign(ny - y) * r;
+        d += ` L${ax},${ay} Q${x},${y} ${bx},${by}`;
+      } else d += ` L${x},${y}`;
+    }
+    E[id] = { id, a, b, d };
+  }
+  // browser → controllers
+  curve("b_know", "browser", "r", "knowCtrl", "l", 140);
+  curve("b_chat", "browser", "r", "chatCtrl", "l", 224);
+  curve("b_rest", "browser", "r", "restCtrl", "l", 396);
+  curve("b_demo", "browser", "r", "demoCtrl", "l", 410);
+  curve("b_brief", "browser", "r", "briefCtrl", "l", 424);
+  curve("cc_mcp", "claude", "r", "mcpEp", "l");
+  // ETL
+  curve("know_reader", "knowCtrl", "r", "reader", "l");
+  curve("reader_split", "reader", "r", "split", "l");
+  curve("split_vstore", "split", "r", "vstore", "l");
+  curve("vstore_oai", "vstore", "r", "openai", "t", 140);
+  poly("dedupe", "knowCtrl", "t_docs", [[414, 128], [424, 128], [424, 98], [1060, 98], [1060, 140], [1076, 140]]);
+  poly("vstore_vs", "vstore", "t_vs", [[878, 156], [1058, 156], [1058, 332], [1076, 332]]);
+  poly("etl_sc", "vstore", "t_sc", [[878, 162], [1052, 162], [1052, 236], [1076, 236]]);
+  // chat pipeline
+  curve("chat_svc", "chatCtrl", "r", "chatSvc", "l");
+  curve("svc_pipe", "chatSvc", "r", "cacheA", "l", 224);
+  curve("cache_mem", "cacheA", "b", "memA", "t");
+  curve("mem_know", "memA", "b", "knowA", "t");
+  curve("know_tool", "knowA", "b", "toolA", "t");
+  curve("tool_model", "toolA", "b", "modelA", "t");
+  // Chat streaming tab only: ChatClient straight to the model, before any advisor is introduced.
+  // Runs in the 16px between ChatService and the ChatClient frame (x 586), kept clear of the frame.
+  poly("svc_model", "chatSvc", "modelA", [[570, 224], [577, 224], [577, 428], [598, 428]], 4);
+  E.svc_model.only = "stream";
+  // Memory tab only: ChatService into the memory advisor, and the advisor on to the model (other advisors not yet introduced).
+  poly("svc_mem", "chatSvc", "memA", [[570, 224], [577, 224], [577, 284], [598, 284]], 4);
+  E.svc_mem.only = "memory";
+  // Same lane as svc_mem (x 577, outside the ChatClient frame), below it, so it reads apart from the frame border.
+  poly("mem_model", "memA", "modelA", [[598, 296], [577, 296], [577, 420], [598, 420]], 4);
+  E.mem_model.only = "memory";
+  // RAG tab only: ChatService into the knowledge advisor and on to the model, in the same lane (x 577) outside the frame.
+  poly("svc_know", "chatSvc", "knowA", [[570, 224], [577, 224], [577, 332], [598, 332]], 4);
+  E.svc_know.only = "rag";
+  poly("know_model", "knowA", "modelA", [[598, 344], [577, 344], [577, 420], [598, 420]], 4);
+  E.know_model.only = "rag";
+  // Tool calling tab only: ChatService straight into the tool loop (cache, memory and RAG stay dimmed).
+  poly("svc_tool", "chatSvc", "toolA", [[570, 224], [577, 224], [577, 380], [598, 380]], 4);
+  E.svc_tool.only = "order";
+  curve("model_anth", "modelA", "r", "anth", "l", 428, 428);
+  curve("cache_oai", "cacheA", "r", "openai", "b", 230);
+  curve("cache_sc", "cacheA", "r", "t_sc", "l", 236);
+  curve("cache_cm", "cacheA", "r", "t_cm", "l", 244);
+  curve("mem_cm", "memA", "r", "t_cm", "l", 284, 284);
+  curve("know_oai", "knowA", "r", "openai", "b", 326);
+  curve("know_vs", "knowA", "r", "t_vs", "l", 332, 332);
+  // tools
+  curve("tool_otools", "toolA", "l", "otools", "l");
+  curve("tool_ctools", "toolA", "r", "ctools", "r");
+  curve("otools_osvc", "otools", "b", "osvc", "t");
+  curve("otools_rsvc", "otools", "b", "rsvc", "t");
+  curve("ctools_csvc", "ctools", "b", "csvc", "t");
+  poly("osvc_orders", "osvc", "t_orders", [[632, 606], [632, 632], [1062, 632], [1062, 575], [1076, 575]]);
+  poly("osvc_products", "osvc", "t_products", [[640, 606], [640, 640], [1068, 640], [1068, 617], [1076, 617]]);
+  poly("rsvc_orders", "rsvc", "t_orders", [[737, 606], [737, 632], [1062, 632], [1062, 575], [1076, 575]]);
+  curve("csvc_products", "csvc", "r", "t_products", "l");
+  curve("rest_osvc", "restCtrl", "r", "osvc", "l");
+  // observability
+  curve("model_trace", "modelA", "l", "trace", "r", 428, 304);
+  curve("tool_trace", "toolA", "l", "trace", "r", 380, 312);
+  curve("trace_svc", "trace", "t", "chatSvc", "b");
+  curve("svc_ledger", "chatSvc", "l", "ledger", "l", 236, 380);
+  poly("ledger_usage", "ledger", "t_usage", [[570, 380], [580, 380], [580, 473], [1076, 473]]);
+  // structured output
+  curve("brief_svc", "briefCtrl", "r", "briefSvc", "l");
+  poly("brief_rsvc", "briefSvc", "rsvc", [[570, 660], [737, 660], [737, 606]]);
+  poly("brief_anth", "briefSvc", "anth", [[570, 680], [980, 680], [980, 460]]);
+  poly("brief_ledger", "briefSvc", "ledger", [[500, 640], [500, 408]]);
+  // MCP
+  curve("mcp_ktools", "mcpEp", "r", "ktools", "l");
+  poly("mcp_ctools", "mcpEp", "ctools", [[414, 762], [908, 762], [908, 509], [888, 509]]);
+  poly("ktools_vs", "ktools", "t_vs", [[570, 738], [1046, 738], [1046, 340], [1076, 340]]);
+  poly("ktools_oai", "ktools", "openai", [[570, 750], [1040, 750], [1040, 218]]);
+
+  // testing
+  curve("tests_chat", "tests", "r", "chatCtrl", "l", 494, 236);
+  curve("evals_chat", "evals", "r", "chatCtrl", "l", 626, 244);
+  poly("evals_anth", "evals", "anth", [[210, 652], [222, 652], [222, 792], [980, 792], [980, 460]]);
+  curve("model_mock", "modelA", "r", "mockChat", "l", 420, 77);
+  curve("cache_mockemb", "cacheA", "r", "mockEmb", "l", 226, 119);
+  curve("know_mockemb", "knowA", "r", "mockEmb", "l", 320, 125);
+
+  // ───────────────────────── flows (each step points at the code that does it) ─────────────────────────
+  // ───────────────────────── Spring AI concepts (one diagram per concept, no code) ─────────────────────────
+  const Concepts = (() => {
+  const W = 1000, H = 440;
+  const esc = s => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;");
+  // node: [id, x, y, w, h, label, sub, kind, lines?, opts?]
+  const n = (id, x, y, w, h, label, sub = "", kind = "svc", lines = null, opt = {}) => ({ id, x, y, w, h, label, sub, kind, lines, ...opt });
+  const side = (b, s) => s === "l" ? [b.x, b.y + b.h / 2] : s === "r" ? [b.x + b.w, b.y + b.h / 2] : s === "t" ? [b.x + b.w / 2, b.y] : [b.x + b.w / 2, b.y + b.h];
+  const NORM = { l: [-1, 0], r: [1, 0], t: [0, -1], b: [0, 1] };
+
+  const C = [
+    { title: "ChatModel", group: "Gọi model", kind: "model",
+      role: "Interface thống nhất để gọi mô hình ngôn ngữ của các nhà cung cấp.",
+      why: "Đổi nhà cung cấp chỉ cần đổi cấu hình; phần còn lại của ứng dụng giữ nguyên.",
+      nodes: [n("app", 40, 185, 170, 70, "Ứng dụng", "", "svc"), n("cm", 320, 185, 220, 70, "ChatModel", "interface", "model"),
+              n("p1", 680, 70, 270, 64, "Anthropic", "Claude", "model"), n("p2", 680, 188, 270, 64, "OpenAI", "GPT", "svc", null, { muted: true }),
+              n("p3", 680, 306, 270, 64, "Ollama", "model chạy local", "svc", null, { muted: true })],
+      edges: [["e1", "app", "r", "cm", "l"], ["e2", "cm", "r", "p1", "l"], ["e3", "cm", "r", "p2", "l", "alt"], ["e4", "cm", "r", "p3", "l", "alt"]],
+      seq: ["e1", "e2", ["e2", 1], ["e1", 1]],
+      extra: `<text class="note" x="560" y="400">nhà cung cấp khác: chỉ đổi cấu hình</text>` },
+
+    { title: "ChatClient", group: "Gọi model", kind: "obs",
+      role: "API fluent để dựng prompt, gửi tới ChatModel và nhận câu trả lời.",
+      why: "Gom prompt, advisor, tool và định dạng kết quả vào một chỗ, thay vì tự ghép từng phần.",
+      nodes: [n("app", 30, 185, 150, 70, "Ứng dụng", "", "svc"),
+              n("cc", 250, 70, 320, 300, "ChatClient", "", "obs", ["prompt: system + user", "advisors", "tools", "call() hoặc stream()"]),
+              n("cm", 640, 185, 150, 70, "ChatModel", "", "model"), n("res", 830, 145, 150, 150, "Kết quả", "", "cache", ["text", "stream", "object"])],
+      edges: [["e1", "app", "r", "cc", "l"], ["e2", "cc", "r", "cm", "l"], ["e3", "cm", "r", "res", "l"]],
+      seq: ["e1", "e2", "e3"] },
+
+    { title: "Advisor", group: "Gọi model", kind: "rag",
+      role: "Lớp xử lý bao quanh mỗi lần gọi model: sửa request trước khi gửi, xử lý response sau khi nhận.",
+      why: "Thêm memory, RAG, cache… mà không thay đổi code gọi model.",
+      nodes: [n("req", 20, 95, 110, 56, "Request", "", "http"), n("res", 20, 290, 110, 56, "Response", "", "http"),
+              n("a1", 180, 60, 150, 320, "Cache", "", "cache"), n("a2", 360, 60, 150, 320, "Memory", "", "memory"),
+              n("a3", 540, 60, 150, 320, "RAG", "", "rag"), n("m", 760, 60, 200, 320, "ChatModel", "", "model")],
+      edges: [["in", null, null, null, null, null, [[130, 123], [760, 123]]], ["out", null, null, null, null, null, [[760, 318], [130, 318]]]],
+      seq: ["in", "out"],
+      extra: [180, 360, 540].map(x => `<text class="note" x="${x + 14}" y="168">xử lý request</text><text class="note" x="${x + 14}" y="280">xử lý response</text>`).join("")
+        + `<text class="note k" x="140" y="110">→</text><text class="note" x="300" y="420">thứ tự advisor quyết định hành vi</text>` },
+
+    { title: "ChatMemory", group: "Ngữ cảnh", kind: "memory",
+      role: "Lưu lịch sử hội thoại và gửi lại cho model ở lượt sau.",
+      why: "Model không giữ trạng thái giữa các lần gọi; thiếu memory thì “đổi thành 4 chai” không có nghĩa.",
+      nodes: [n("p1", 30, 30, 500, 100, "Lượt 1", "", "http", [["new", "User: Cho mình đặt 2 chai Kefir Mật Ong"]]),
+              n("m1", 820, 45, 150, 70, "ChatModel", "", "model"), n("mem", 590, 175, 180, 70, "ChatMemory", "lịch sử", "memory"),
+              n("p2", 30, 270, 500, 140, "Lượt 2", "", "http", [["hist", "User: Cho mình đặt 2 chai Kefir Mật Ong"], ["hist", "Assistant: Đã đặt đơn #1061"], ["new", "User: Đổi thành 4 chai"]]),
+              n("m2", 820, 305, 150, 70, "ChatModel", "", "model")],
+      edges: [["e1", "p1", "r", "m1", "l"], ["e2", "m1", "b", "mem", "r"], ["e3", "mem", "b", "p2", "r", null, null, null, 320], ["e4", "p2", "r", "m2", "l", null, null, 360]],
+      seq: ["e1", "e2", "e3", "e4"],
+      extra: `<text class="note k" x="600" y="268">nạp lại lịch sử</text>` },
+
+    { title: "EmbeddingModel", group: "Tri thức", kind: "embed",
+      role: "Chuyển văn bản thành vector số; câu cùng nghĩa cho vector gần nhau.",
+      why: "So sánh theo nghĩa thay vì theo từ khoá.",
+      nodes: [n("s1", 20, 60, 320, 56, "Kefir mật ong để được bao lâu?", "", "http", null, { num: 1 }),
+              n("s2", 20, 175, 320, 56, "Kefir mật ong bảo quản mấy ngày?", "", "http", null, { num: 2 }),
+              n("s3", 20, 290, 320, 56, "Shop giao ra Hà Nội không?", "", "http", null, { num: 3 }),
+              n("em", 390, 168, 170, 70, "EmbeddingModel", "[0.12, −0.48, …]", "embed")],
+      edges: [["e1", "s1", "r", "em", "l"], ["e2", "s2", "r", "em", "l"], ["e3", "s3", "r", "em", "l"],
+              ["v1", null, null, null, null, null, [[560, 203], [600, 203], [600, 150], [755, 150]]],
+              ["v2", null, null, null, null, null, [[560, 203], [785, 203]]],
+              ["v3", null, null, null, null, null, [[560, 203], [600, 203], [600, 330], [895, 330]]]],
+      seq: ["e1", "v1", "e2", "v2", "e3", "v3"],
+      extra: `<rect x="620" y="40" width="350" height="360" rx="12" fill="var(--tint)" stroke="var(--edge)"/>
+        <line class="axis" x1="640" y1="380" x2="950" y2="380"/><line class="axis" x1="640" y1="380" x2="640" y2="60"/>
+        <circle cx="772" cy="176" r="62" fill="none" stroke="var(--k-embed)" stroke-dasharray="5 5"/>
+        <circle cx="760" cy="150" r="8" fill="var(--k-http)"/><text class="tag k-http" x="748" y="133">1</text>
+        <circle cx="790" cy="203" r="8" fill="var(--k-http)"/><text class="tag k-http" x="804" y="208">2</text>
+        <circle cx="900" cy="330" r="8" fill="var(--k-http)"/><text class="tag k-http" x="914" y="335">3</text>
+        <text class="note k-embed note k" x="700" y="262">gần nhau = cùng nghĩa</text><text class="note" x="830" y="370">xa = khác nghĩa</text>` },
+
+    { title: "VectorStore", group: "Tri thức", kind: "db",
+      role: "Cơ sở dữ liệu lưu vector và tìm các vector gần nhất với câu hỏi.",
+      why: "Tìm nhanh đoạn văn liên quan trong rất nhiều tài liệu.",
+      nodes: [n("q", 20, 185, 210, 70, "Câu hỏi", "→ vector", "http"), n("vs", 300, 40, 380, 360, "VectorStore", "", "db"),
+              n("r1", 760, 90, 220, 56, "Đoạn A", "rất gần", "rag"), n("r2", 760, 192, 220, 56, "Đoạn B", "gần", "rag"), n("r3", 760, 294, 220, 56, "Đoạn C", "khá gần", "rag")],
+      edges: [["e1", "q", "r", "vs", "l"], ["o1", "vs", "r", "r1", "l"], ["o2", "vs", "r", "r2", "l"], ["o3", "vs", "r", "r3", "l"]],
+      seq: ["e1", "o1", "o2", "o3"],
+      extra: (() => { let g = ""; const hits = new Set(["2,1", "3,2", "2,3"]); for (let i = 0; i < 7; i++) for (let j = 0; j < 5; j++) g += `<circle class="grid-dot${hits.has(i + "," + j) ? " hit" : ""}" cx="${345 + i * 48}" cy="${120 + j * 60}" r="${hits.has(i + "," + j) ? 9 : 6}"/>`; return g + `<text class="note k-rag note k" x="770" y="390">top-k gần nhất</text>`; })() },
+
+    { title: "Cosine Similarity", group: "Tri thức", kind: "embed",
+      role: "Đo mức giống nghĩa của hai vector bằng góc giữa chúng: càng cùng hướng, điểm càng gần 1.",
+      why: "Đây là con số VectorStore dùng để xếp hạng kết quả và so với ngưỡng.",
+      nodes: [],
+      edges: [["a", null, null, null, null, null, [[90, 300], [180, 180]]], ["b", null, null, null, null, null, [[90, 300], [270, 60]]],
+              ["c", null, null, null, null, null, [[90, 300], [210, 390]]]],
+      seq: ["a", "b", "c"],
+      extra: `<defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="var(--k-embed)"/></marker>
+          <marker id="ahc" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="var(--k-http)"/></marker></defs>
+        <rect x="30" y="30" width="440" height="380" rx="12" fill="var(--tint)" stroke="var(--edge)"/>
+        <line class="axis" x1="60" y1="300" x2="450" y2="300"/><line class="axis" x1="90" y1="400" x2="90" y2="45"/>
+        <line x1="90" y1="300" x2="180" y2="180" stroke="var(--k-embed)" stroke-width="3" marker-end="url(#ah)"/>
+        <line x1="90" y1="300" x2="270" y2="60" stroke="var(--k-embed)" stroke-width="3" marker-end="url(#ah)"/>
+        <line x1="90" y1="300" x2="210" y2="390" stroke="var(--k-http)" stroke-width="3" marker-end="url(#ahc)"/>
+        <text class="tag k-embed" x="186" y="196">A (3, 4)</text><text class="tag k-embed" x="278" y="68">B (6, 8)</text><text class="tag k-http" x="218" y="396">C (4, −3)</text>
+        <path d="M118,263 A46,46 0 0 1 128,330" fill="none" stroke="var(--k-http)" stroke-dasharray="4 4"/><text class="note" x="134" y="300">90°</text>
+        <text class="note" x="30" y="432">2 chiều để minh hoạ · thực tế 1536 chiều</text>
+        <text x="520" y="70" style="fill:var(--ink);font:600 16px var(--font-body)">Nhân từng cặp toạ độ, cộng lại, chia cho độ dài</text>
+        <text class="ln" x="520" y="116" style="fill:var(--k-embed)">cos(A, B) = (3·6 + 4·8) / (5·10) = 1.0</text><text class="note" x="520" y="140">cùng hướng → cùng nghĩa</text>
+        <text class="ln" x="520" y="186" style="fill:var(--k-http)">cos(A, C) = (3·4 + 4·(−3)) / (5·5) = 0</text><text class="note" x="520" y="210">vuông góc → không liên quan</text>
+        <line class="axis" x1="520" y1="320" x2="960" y2="320"/>
+        <text class="note" x="514" y="344">0</text><text class="note" x="952" y="344">1</text>
+        ${[[0.27, "không liên quan"], [0.65, "cùng chủ đề, khác ý"], [0.81, "diễn đạt lại"]].map(([v, t], i) => { const x = 520 + v * 440; return `<circle cx="${x}" cy="320" r="7" fill="var(--k-embed)"/><text class="note" x="${x}" y="${i % 2 ? 290 : 372}" text-anchor="middle">${v.toFixed(2).replace(".", ",")} · ${t}</text>`; }).join("")}
+        <text class="note" x="520" y="410">điểm đo thực tế với text-embedding-3-small</text>` },
+
+    { title: "RAG", group: "Tri thức", kind: "rag",
+      role: "Truy xuất tài liệu liên quan và đưa vào prompt trước khi model trả lời.",
+      why: "Model không biết dữ liệu riêng của doanh nghiệp; RAG giúp trả lời đúng và có nguồn.",
+      nodes: [n("q", 20, 150, 140, 64, "Câu hỏi", "", "http"), n("ret", 200, 150, 160, 64, "Retrieve", "VectorStore", "db"),
+              n("docs", 200, 300, 160, 64, "Tài liệu", "PDF · Markdown", "db"),
+              n("aug", 400, 110, 210, 144, "Augment", "", "rag", ["câu hỏi", "+ đoạn liên quan"]),
+              n("gen", 650, 150, 140, 64, "Generate", "ChatModel", "model"), n("ans", 830, 150, 150, 64, "Câu trả lời", "kèm nguồn", "cache")],
+      edges: [["e1", "q", "r", "ret", "l"], ["d1", "ret", "b", "docs", "t"], ["e2", "ret", "r", "aug", "l"], ["e3", "aug", "r", "gen", "l"], ["e4", "gen", "r", "ans", "l"]],
+      seq: ["e1", "d1", ["d1", 1], "e2", "e3", "e4"] },
+
+    { title: "Upload Documents (ETL)", group: "Tri thức", kind: "embed",
+      role: "Chuẩn bị tài liệu cho RAG: đọc, cắt nhỏ, nhúng thành vector và lưu vào VectorStore.",
+      why: "Tài liệu dài phải chia nhỏ và chuyển thành vector mới tìm kiếm được.",
+      nodes: [n("f", 20, 180, 130, 70, "PDF", "tài liệu", "http"), n("rd", 200, 180, 150, 70, "Read", "từng trang", "rag"),
+              n("sp", 400, 180, 150, 70, "Split", "chunk nhỏ", "rag"), n("em", 600, 180, 150, 70, "Embed", "vector", "embed"),
+              n("st", 800, 180, 170, 70, "Store", "VectorStore", "db")],
+      edges: [["e1", "f", "r", "rd", "l"], ["e2", "rd", "r", "sp", "l"], ["e3", "sp", "r", "em", "l"], ["e4", "em", "r", "st", "l"]],
+      seq: ["e1", "e2", "e3", "e4"],
+      extra: [0, 1, 2, 3].map(i => `<rect x="${404 + i * 37}" y="276" width="30" height="40" rx="4" fill="var(--tint2)" stroke="var(--k-rag)"/>`).join("")
+        + `<text class="note" x="404" y="338">mỗi chunk vài trăm token</text><text class="note" x="604" y="290">[0.08, −0.31, …]</text>
+        <text class="note" x="20" y="110">Extract</text><text class="note" x="400" y="110">Transform</text><text class="note" x="700" y="110">Load</text>` },
+
+    { title: "Tool Calling", group: "Hành động", kind: "tool",
+      role: "Model yêu cầu gọi một hàm; ứng dụng thực thi hàm và trả kết quả lại cho model.",
+      why: "Model không tự truy cập dữ liệu thời gian thực hay thực hiện hành động.",
+      nodes: [n("u", 20, 60, 150, 60, "Người dùng", "", "http"), n("m", 330, 60, 220, 60, "ChatModel", "", "model"),
+              n("a", 330, 300, 220, 60, "Ứng dụng", "thực thi hàm", "svc"), n("fn", 700, 300, 250, 60, "createOrder(…)", "đọc / ghi dữ liệu", "tool"),
+              n("ans", 700, 60, 250, 60, "Câu trả lời", "", "cache")],
+      edges: [["e1", "u", "r", "m", "l"], ["call", null, null, null, null, null, [[410, 120], [410, 300]]], ["e3", "a", "r", "fn", "l"],
+              ["back", null, null, null, null, null, [[470, 300], [470, 120]]], ["e5", "m", "r", "ans", "l"]],
+      seq: ["e1", "call", "e3", ["e3", 1], "back", "e5"],
+      extra: `<text class="note k" x="300" y="215" text-anchor="end">1 · yêu cầu gọi hàm</text><text class="note k" x="490" y="215">2 · kết quả</text>` },
+
+    { title: "Structured Output", group: "Hành động", kind: "model",
+      role: "Model trả về dữ liệu đúng một cấu trúc định sẵn.",
+      why: "Code dùng kết quả trực tiếp, không phải tự phân tích văn bản tự do.",
+      nodes: [n("sc", 20, 110, 250, 200, "Khuôn dữ liệu", "", "rag", ["headline: text", "highlights: list", "suggestion: text"]),
+              n("m", 330, 175, 160, 70, "ChatModel", "", "model"),
+              n("js", 560, 110, 230, 200, "JSON", "", "svc", ['{ "headline": "…",', '  "highlights": [ … ],', '  "suggestion": "…" }']),
+              n("ob", 840, 175, 140, 70, "Object", "dùng ngay", "cache")],
+      edges: [["e1", "sc", "r", "m", "l"], ["e2", "m", "r", "js", "l"], ["e3", "js", "r", "ob", "l"]],
+      seq: ["e1", "e2", "e3"] },
+
+    { title: "Observability", group: "Vận hành", kind: "obs",
+      role: "Đo từng bước của một lần gọi AI: thời gian, token, chi phí.",
+      why: "Không quan sát được thì AI là hộp đen: chậm ở đâu, tốn ở đâu, sai ở đâu.",
+      nodes: [], edges: [], seq: [],
+      extra: (() => {
+        const rows = [["Cache", "cache", 0, 60], ["Memory", "memory", 60, 20], ["Router", "rag", 80, 70], ["Retrieval", "rag", 150, 90], ["Model", "model", 240, 420], ["Tool", "tool", 400, 80]];
+        let g = `<text class="note" x="60" y="56">một lượt chat</text><line class="axis" x1="200" y1="66" x2="900" y2="66"/>`;
+        rows.forEach(([name, kind, start, len], i) => {
+          const y = 84 + i * 44;
+          g += `<text x="60" y="${y + 19}" style="fill:var(--ink);font:600 14px var(--font-body)">${name}</text>`;
+          g += `<rect x="200" y="${y + 4}" width="700" height="22" rx="5" fill="var(--tint)"/>`;
+          g += `<rect class="wf-bar k-${kind}" x="${200 + start}" y="${y + 4}" width="${len}" height="22" rx="5" style="animation-delay:${i * .25}s"/>`;
+        });
+        ["Thời gian", "Token", "Chi phí"].forEach((t, i) => {
+          g += `<rect x="${200 + i * 240}" y="365" width="220" height="56" rx="10" fill="var(--panel2)" stroke="var(--edge)"/><text class="note" x="${216 + i * 240}" y="398" style="font-size:14px;fill:var(--ink)">${t}</text>`;
+        });
+        return g;
+      })() },
+
+    { title: "MCP", group: "Vận hành", kind: "mcp",
+      role: "Model Context Protocol: giao thức chuẩn để client AI bên ngoài khám phá và gọi tool của ứng dụng.",
+      why: "Viết tool một lần, dùng được với nhiều client AI.",
+      nodes: [n("c1", 20, 60, 200, 60, "Claude Code", "", "mcp"), n("c2", 20, 190, 200, 60, "IDE", "", "mcp", null, { muted: true }),
+              n("c3", 20, 320, 200, 60, "Agent khác", "", "mcp", null, { muted: true }), n("mcp", 360, 175, 200, 90, "MCP", "giao thức chuẩn", "mcp"),
+              n("app", 700, 110, 270, 220, "Ứng dụng", "", "tool", ["tool: tra sản phẩm", "tool: tìm tài liệu"])],
+      edges: [["e1", "c1", "r", "mcp", "l"], ["e2", "c2", "r", "mcp", "l", "alt"], ["e3", "c3", "r", "mcp", "l", "alt"], ["e4", "mcp", "r", "app", "l"]],
+      seq: ["e1", "e4", ["e4", 1], ["e1", 1]] },
+
+    { title: "Evaluator", group: "Vận hành", kind: "test",
+      role: "Dùng một model khác để chấm chất lượng câu trả lời.",
+      why: "Câu trả lời của AI không cố định từng chữ; cần kiểm theo ý nghĩa thay vì so chuỗi.",
+      nodes: [n("q", 20, 50, 220, 60, "Câu hỏi", "", "http"), n("a", 20, 190, 220, 60, "Câu trả lời", "", "http"), n("d", 20, 330, 220, 60, "Tài liệu", "", "db"),
+              n("j", 380, 175, 220, 90, "Model chấm điểm", "LLM-as-a-judge", "test"),
+              n("yes", 740, 110, 200, 64, "YES", "đạt", "cache"), n("no", 740, 266, 200, 64, "NO", "không đạt", "bad", null, { muted: true })],
+      edges: [["e1", "q", "r", "j", "l"], ["e2", "a", "r", "j", "l"], ["e3", "d", "r", "j", "l"], ["e4", "j", "r", "yes", "l"], ["e5", "j", "r", "no", "l", "alt"]],
+      seq: ["e1", "e2", "e3", "e4"] },
+  ];
+
+  function edgePath(c, e) {
+    const [id, a, as, b, bs, cls, pts, ay, by] = e;
+    if (pts) return { id, cls, d: "M" + pts.map(p => p.join(",")).join(" L") };
+    const A = c.nodes.find(x => x.id === a), B = c.nodes.find(x => x.id === b);
+    const p = side(A, as), q = side(B, bs);
+    if (ay !== undefined && ay !== null) p[1] = ay;
+    if (by !== undefined && by !== null) q[1] = by;
+    const d = Math.max(24, Math.hypot(q[0] - p[0], q[1] - p[1]) * .4);
+    return { id, cls, d: `M${p} C${p[0] + NORM[as][0] * d},${p[1] + NORM[as][1] * d} ${q[0] + NORM[bs][0] * d},${q[1] + NORM[bs][1] * d} ${q}` };
+  }
+
+    let raf = null;
+    function mount(container, idx) {
+      const c = C[idx];
+    const edges = c.edges.map(e => edgePath(c, e));
+    const hotIds = new Set(c.seq.map(x => Array.isArray(x) ? x[0] : x));
+    let s = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Sơ đồ ${esc(c.title)}" class="k-${c.kind}">`;
+    s += edges.map(e => `<path id="ce-${e.id}" class="edge${hotIds.has(e.id) ? ` hot k-${c.kind}` : ""}${e.cls === "alt" ? " alt" : ""}" d="${e.d}"/>`).join("");
+    for (const b of c.nodes) {
+      s += `<g class="n k-${b.kind}${b.muted ? " muted" : " on"}"><rect class="box" x="${b.x}" y="${b.y}" width="${b.w}" height="${b.h}" rx="12"/>`;
+      s += `<rect class="bar" x="${b.x + 9}" y="${b.y + 10}" width="3.5" height="${Math.min(b.h - 20, 50)}" rx="1.5"/>`;
+      const tall = b.h > 90;
+      const ly = tall ? b.y + 32 : b.y + b.h / 2 + (b.sub ? -2 : 6);
+      if (b.num) s += `<text class="tag k-http" x="${b.x + b.w - 22}" y="${b.y + b.h / 2 + 5}">${b.num}</text>`;
+      s += `<text class="lb" x="${b.x + 24}" y="${ly}">${esc(b.label)}</text>`;
+      if (b.sub) s += `<text class="sb" x="${b.x + 24}" y="${ly + 18}">${esc(b.sub)}</text>`;
+      (b.lines || []).forEach((l, i) => {
+        const [cls, text] = Array.isArray(l) ? l : ["", l];
+        s += `<text class="ln ${cls}" x="${b.x + 24}" y="${b.y + 66 + i * 26}">${esc(text)}</text>`;
+      });
+      s += `</g>`;
+    }
+    s += c.extra || "";
+    s += `<g class="cdots"></g></svg>`;
+      container.innerHTML = s;
+      animate(container, c);
+    }
+    function stop() { cancelAnimationFrame(raf); }
+
+  function animate(container, c) {
+    cancelAnimationFrame(raf);
+    const svg = container.querySelector("svg"), g = svg.querySelector(".cdots");
+    const live = c.seq.map((x, k) => {
+      const [id, rev] = Array.isArray(x) ? [x[0], x[1] === 1] : [x, false];
+      const path = svg.querySelector(`#ce-${id}`);
+      const dot = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+      dot.setAttribute("r", "6"); dot.setAttribute("class", `dot k-${c.kind}`); dot.setAttribute("opacity", "0");
+      g.appendChild(dot);
+      return { path, len: path.getTotalLength(), rev, dot, k };
+    });
+    if (!live.length) return;
+    const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const place = (d, p) => { const pt = d.path.getPointAtLength((d.rev ? 1 - p : p) * d.len); d.dot.setAttribute("cx", pt.x); d.dot.setAttribute("cy", pt.y); };
+    if (reduce) { live.forEach(d => { d.dot.setAttribute("opacity", "1"); place(d, 1); }); return; }
+    const D = 750, cycle = D * live.length + 900, t0 = performance.now();
+    const tick = now => {
+      for (const d of live) {
+        const p = ((now - t0) % cycle - d.k * D) / D;
+        d.dot.setAttribute("opacity", p < 0 || p > 1 ? "0" : "1");
+        if (p >= 0 && p <= 1) place(d, p);
+      }
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+  }
+
+    return { list: C, mount, stop };
+  })();
+
+  // Each step lists its edges in the order the code runs them; the dots travel them one after another.
+  const BACK = [["tool_model", 1], ["know_tool", 1], ["mem_know", 1], ["cache_mem", 1], ["svc_pipe", 1], ["chat_svc", 1], ["b_chat", 1]];
+  const FLOWS = [
+    { id: "overview", name: "Tổng quan", kind: "obs", steps: [
+      { title: "Kiến trúc Kefir AI", nodes: Object.keys(N), edges: [], all: true,
+        text: "React · Spring Boot App · PostgreSQL + pgvector · AI providers",
+        code: "pom.xml · spring-ai-bom 2.0.1" },
+      { title: "ChatClient / ChatModel", nodes: ["modelA", "anth"], groups: ["chatClient"], edges: ["model_anth"],
+        text: "ChatClient: API để ứng dụng gọi model. ChatModel: interface kết nối tới nhà cung cấp model.",
+        code: "chat/ChatService.java:70-81 · application-demo.yaml:7-12" },
+      { title: "Advisor", nodes: ["cacheA", "memA", "knowA", "toolA"], edges: ["svc_pipe", "cache_mem", "mem_know", "know_tool", "tool_model"],
+        text: "Lớp xử lý bao quanh mỗi lần gọi model, chạy theo getOrder(): sửa request trước khi gửi, xử lý response sau khi nhận.",
+        code: "chat/ChatClientConfiguration.java:49-51" },
+      { title: "ChatMemory", nodes: ["memA", "t_cm"], edges: ["mem_cm"],
+        text: "Lưu lịch sử hội thoại, giúp model hiểu ngữ cảnh của các lượt trước.",
+        code: "chat/ChatClientConfiguration.java:31-35" },
+      { title: "EmbeddingModel / VectorStore", nodes: ["cacheA", "knowA", "openai", "t_sc", "t_vs"], edges: ["cache_oai", "cache_sc", "know_oai", "know_vs"],
+        text: "EmbeddingModel chuyển văn bản thành vector. VectorStore lưu vector và tìm theo độ tương đồng, ở đây là pgvector.",
+        code: "application.yaml:39 · knowledge/KnowledgeConfiguration.java" },
+      { title: "Upload Documents", nodes: ["knowCtrl", "reader", "split", "vstore", "openai", "t_vs"], edges: ["b_know", "know_reader", "reader_split", "split_vstore", "vstore_oai", "vstore_vs"],
+        text: "Nạp tài liệu vào VectorStore để model tra cứu khi trả lời (RAG).",
+        code: "knowledge/KnowledgeService.java:64-72" },
+      { title: "Tool Calling", nodes: ["toolA", "otools", "ctools"], edges: ["tool_otools", "tool_ctools"],
+        text: "Cho phép model gọi hàm của ứng dụng để lấy dữ liệu hoặc thực hiện hành động.",
+        code: "order/OrderTools.java · catalog/CatalogTools.java" },
+      { title: "Observability", nodes: ["modelA", "toolA", "trace"], edges: ["model_trace", "tool_trace", "trace_svc"],
+        text: "Ghi nhận metrics và tracing cho mỗi lần gọi model và tool, phục vụ theo dõi và debug.",
+        code: "trace/TraceObservationHandler.java:30-73" },
+      { title: "MCP", nodes: ["claude", "mcpEp", "ctools", "ktools"], edges: ["cc_mcp", "mcp_ctools", "mcp_ktools"],
+        text: "Model Context Protocol: chuẩn mở để client AI bên ngoài gọi tool của ứng dụng.",
+        code: "mcp/McpConfiguration.java:18-19" },
+    ]},
+    { id: "concepts", name: "Spring AI Concepts", kind: "obs", concept: true, steps: Concepts.list },
+    { id: "stream", name: "Chat streaming", kind: "model", focus: true, steps: [
+      // Each step keeps everything the previous one lit and adds to it.
+      { title: "Cấu hình model", nodes: ["anth"], edges: [], snips: ["starter", "yaml"],
+        text: "Khai báo starter Anthropic và cấu hình model." },
+      { title: "ChatModel", nodes: ["modelA", "anth"], edges: ["model_anth"],
+        text: "Auto-configuration tạo AnthropicChatModel từ cấu hình.",
+        code: "AnthropicChatModel · auto-configuration" },
+      { title: "ChatClient", nodes: ["modelA", "anth"], groups: ["chatClient"], edges: ["model_anth"], snips: ["client"],
+        text: "ChatClient được dựng từ ChatModel, là API ứng dụng dùng để gọi model." },
+      { title: "call() / stream()", nodes: ["browser", "chatCtrl", "chatSvc", "modelA", "anth"], groups: ["chatClient"],
+        edges: ["b_chat", "chat_svc", "svc_model", "model_anth", ["model_anth", 1], ["svc_model", 1], ["chat_svc", 1], ["b_chat", 1]],
+        snips: ["callstream"], code: "ChatController.java · SSE",
+        text: "call() chờ model trả lời xong rồi trả về một lần. stream() trả về Flux, mỗi phần câu trả lời được gửi tới trình duyệt qua SSE ngay khi model sinh ra." },
+    ]},
+    { id: "memory", name: "Memory", kind: "memory", focus: true, steps: [
+      // Builds up like Chat streaming; only the memory advisor joins the chain, the others stay dimmed.
+      { title: "ChatMemory", nodes: ["memA", "t_cm"], edges: ["mem_cm"], snips: ["mem_starter", "mem_yaml", "mem_bean"],
+        text: "ChatMemory lưu lịch sử hội thoại. MessageWindowChatMemory giữ 20 tin gần nhất, repository JDBC lưu vào PostgreSQL." },
+      { title: "MessageChatMemoryAdvisor", nodes: ["memA", "t_cm"], groups: ["chatClient"], edges: ["mem_cm"], snips: ["mem_advisor"],
+        text: "Advisor được gắn vào ChatClient và chạy trên mọi lần gọi model." },
+      { title: "Conversation ID", nodes: ["chatSvc", "memA", "t_cm"], groups: ["chatClient"], edges: ["svc_mem", "mem_cm"], snips: ["mem_param", "mem_key"],
+        text: "Mỗi request truyền conversationId để advisor biết đọc lịch sử nào. Key gồm tên người dùng, nên không ai đọc được hội thoại của người khác." },
+      { title: "Nạp lịch sử vào prompt", nodes: ["chatSvc", "memA", "t_cm", "modelA", "anth"], groups: ["chatClient"],
+        edges: ["svc_mem", "mem_cm", ["mem_cm", 1], "mem_model", "model_anth", ["model_anth", 1]],
+        text: "Trước khi gọi model, advisor đọc các tin cũ và chèn vào prompt trước câu hỏi mới.",
+        code: "MessageChatMemoryAdvisor · before()" },
+      { title: "Lưu lượt mới", nodes: ["chatSvc", "memA", "t_cm", "modelA", "anth", "browser", "chatCtrl"], groups: ["chatClient"],
+        edges: [["model_anth", 1], ["mem_model", 1], "mem_cm", ["svc_mem", 1], ["chat_svc", 1], ["b_chat", 1]],
+        text: "Khi stream kết thúc, câu hỏi và câu trả lời được lưu thành 2 dòng mới trong spring_ai_chat_memory.",
+        code: "MessageChatMemoryAdvisor · after()" },
+    ]},
+    { id: "pdf", name: "Upload PDF", kind: "embed", focus: true, steps: [
+      // ETL: Extract (DocumentReader) → Transform (TokenTextSplitter) → Load (EmbeddingModel + VectorStore).
+      { title: "Upload", nodes: ["browser", "knowCtrl", "t_docs"], edges: ["b_know", "dedupe"],
+        text: "Admin tải file lên. KnowledgeService tra knowledge_docs để từ chối file trùng tên hoặc trùng nội dung (SHA-256); bước này chỉ đọc, chưa ghi.",
+        code: "KnowledgeController.java · POST /api/admin/knowledge" },
+      { title: "DocumentReader", nodes: ["browser", "knowCtrl", "t_docs", "reader"], edges: ["b_know", "dedupe", "know_reader"], snips: ["up_reader"],
+        text: "Extract: PagePdfDocumentReader đọc PDF, mỗi trang thành một Document kèm tên file và số trang." },
+      { title: "TokenTextSplitter", nodes: ["browser", "knowCtrl", "t_docs", "reader", "split"], edges: ["b_know", "dedupe", "know_reader", "reader_split"], snips: ["up_split"],
+        text: "Transform: cắt mỗi Document thành chunk khoảng 400 token, để mỗi lần tra chỉ lấy đúng đoạn liên quan." },
+      { title: "EmbeddingModel và VectorStore", nodes: ["browser", "knowCtrl", "t_docs", "reader", "split", "vstore", "openai", "t_vs"],
+        edges: ["b_know", "dedupe", "know_reader", "reader_split", "split_vstore", "vstore_oai", "vstore_vs"], snips: ["up_add", "up_store", "up_yaml"],
+        text: "Load: VectorStore.add() gọi EmbeddingModel đổi từng chunk thành vector 1536 chiều rồi lưu vào pgvector." },
+      { title: "Lưu tài liệu", nodes: ["browser", "knowCtrl", "t_docs", "reader", "split", "vstore", "openai", "t_vs"],
+        // KnowledgeService (not the vector store) writes knowledge_docs, so the dot takes the controller-side line again.
+        edges: ["b_know", "dedupe", "know_reader", "reader_split", "split_vstore", "vstore_oai", "vstore_vs", "dedupe", ["b_know", 1]],
+        text: "KnowledgeService ghi knowledge_docs trong cùng transaction với các chunk, rồi trả thời gian từng bước ETL về màn hình.",
+        code: "KnowledgeService.java · @Transactional ingest()" },
+    ]},
+    { id: "rag", name: "RAG", kind: "rag", focus: true, steps: [
+      // Retrieval reads what Upload PDF stored; only the knowledge advisor joins the chain, the others stay dimmed.
+      { title: "QuestionAnswerAdvisor", nodes: ["knowA"], groups: ["chatClient"], edges: [], snips: ["rag_qa", "rag_yaml"],
+        text: "Advisor RAG có sẵn của Spring AI, cấu hình top-k 3 và ngưỡng similarity 0,50." },
+      { title: "Nhúng câu hỏi", nodes: ["chatSvc", "knowA", "openai"], groups: ["chatClient"], edges: ["svc_know", "know_oai"],
+        text: "Câu hỏi được nhúng thành vector bằng đúng model đã dùng lúc upload, vì vector chỉ so được khi cùng một model sinh ra.",
+        code: "QuestionAnswerAdvisor · before()" },
+      { title: "similaritySearch", nodes: ["chatSvc", "knowA", "openai", "t_vs"], groups: ["chatClient"], edges: ["svc_know", "know_oai", "know_vs", ["know_vs", 1]],
+        text: "pgvector so vector câu hỏi với mọi chunk bằng cosine, lấy 3 chunk gần nhất có điểm từ 0,50 trở lên.",
+        code: "VectorStore.similaritySearch(topK 3, threshold 0.50)" },
+      { title: "Chèn chunk vào prompt", nodes: ["chatSvc", "knowA", "openai", "t_vs", "modelA", "anth"], groups: ["chatClient"], edges: ["svc_know", "know_oai", "know_vs", ["know_vs", 1], "know_model", "model_anth", ["model_anth", 1]],
+        snips: ["rag_tpl"], text: "Các chunk được ghép vào câu hỏi theo prompt template, rồi gửi cho model." },
+      { title: "Trả lời kèm nguồn", nodes: ["chatSvc", "knowA", "openai", "t_vs", "modelA", "anth", "chatCtrl", "browser"], groups: ["chatClient"],
+        edges: ["svc_know", "know_oai", "know_vs", ["know_vs", 1], "know_model", "model_anth", ["model_anth", 1], ["know_model", 1], ["svc_know", 1], ["chat_svc", 1], ["b_chat", 1]],
+        text: "Model trả lời dựa trên các chunk. Metadata source và page thành chip nguồn dưới câu trả lời.",
+        code: "QuestionAnswerAdvisor · RETRIEVED_DOCUMENTS" },
+    ]},
+    { id: "hit", name: "Semantic cache", kind: "cache", focus: true, steps: [
+      // Custom advisor (Spring AI has no semantic cache). Shows only the cached path: how an entry is written, then the HIT.
+      { title: "SemanticCacheAdvisor", nodes: ["cacheA", "t_sc"], groups: ["chatClient"], edges: ["cache_sc"], snips: ["cache_order", "cache_store", "cache_yaml"],
+        text: "Semantic cache dùng lại câu trả lời cũ khi câu hỏi mới cùng nghĩa với câu đã hỏi, không cần gọi model. Spring AI không có sẵn; app tự viết advisor đứng ngoài cùng chuỗi, dùng VectorStore thứ hai." },
+      { title: "Ghi cache", nodes: ["cacheA", "t_sc", "openai"], groups: ["chatClient"], edges: ["cache_oai", "cache_sc"], snips: ["cache_rules"],
+        text: "Chỉ lưu câu trả lời dựa trên tài liệu của shop. Không lưu khi lượt có gọi tool (dữ liệu đơn hàng thay đổi), không có chunk (không có nguồn), hoặc câu hỏi dựa vào hội thoại trước (\"đổi thành 4 chai\").",
+        code: "SemanticCache.store()" },
+      { title: "Tra cache", nodes: ["chatSvc", "cacheA", "t_sc", "openai"], groups: ["chatClient"], edges: ["svc_pipe", "cache_oai", "cache_sc"], snips: ["cache_nearest"],
+        text: "Câu hỏi mới được nhúng, tìm câu đã lưu gần nhất, cùng role, trong 24 giờ." },
+      { title: "HIT: trả lời không cần model", nodes: ["chatSvc", "cacheA", "t_sc", "openai", "chatCtrl", "browser"], groups: ["chatClient"],
+        edges: ["b_chat", "chat_svc", "svc_pipe", "cache_oai", "cache_sc", ["cache_sc", 1], ["svc_pipe", 1], ["chat_svc", 1], ["b_chat", 1]], snips: ["cache_hit"],
+        text: "Câu khác chữ nhưng cùng nghĩa, điểm từ 0,75: trả lại câu trả lời đã lưu, không gọi model." },
+    ]},
+    { id: "order", name: "Tool calling", kind: "tool", focus: true, steps: [
+      // Two model rounds: tool_use (the model asks), the app runs the @Tool, then tool_result and end_turn.
+      { title: "@Tool", nodes: ["otools", "ctools"], edges: [], snips: ["tool_def"],
+        text: "Model chỉ sinh chữ, không tự đọc được giá, tồn kho hay đặt đơn. Tool cho model nhờ app gọi method Java để làm việc đó. Đánh dấu method bằng @Tool; Spring AI sinh JSON schema từ chữ ký method và mô tả." },
+      { title: "Gửi tool cùng prompt", nodes: ["otools", "ctools", "chatSvc", "toolA"], groups: ["chatClient"], edges: ["svc_tool"], snips: ["tool_send"],
+        text: "Request gửi kèm tên, mô tả và JSON schema của từng tool, để model chọn tool phù hợp với câu hỏi." },
+      { title: "Vòng 1: model trả tool_use", nodes: ["otools", "ctools", "chatSvc", "toolA", "modelA", "anth"], groups: ["chatClient"], edges: ["svc_tool", "tool_model", "model_anth", ["model_anth", 1], ["tool_model", 1]],
+        text: "Model không tự chạy code. Nó trả về finishReason tool_use, kèm tên tool và tham số JSON.",
+        code: "finishReason = tool_use · toolCalls" },
+      { title: "ToolCallingAdvisor chạy @Tool", nodes: ["otools", "ctools", "chatSvc", "toolA", "modelA", "anth", "osvc", "t_products", "t_orders"], groups: ["chatClient"], edges: ["svc_tool", "tool_model", "model_anth", ["model_anth", 1], ["tool_model", 1], "tool_otools", "otools_osvc", "osvc_products", "osvc_orders", ["tool_otools", 1]], snips: ["tool_run"],
+        text: "ToolCallingAdvisor gọi createOrder với tham số model đưa. OrderService kiểm số lượng và tồn kho, trừ kho rồi lưu đơn PENDING." },
+      { title: "Vòng 2: tool_result rồi end_turn", nodes: ["otools", "ctools", "chatSvc", "toolA", "modelA", "anth", "osvc", "t_products", "t_orders", "chatCtrl", "browser"], groups: ["chatClient"], edges: ["svc_tool", "tool_model", "model_anth", ["model_anth", 1], ["tool_model", 1], "tool_otools", "otools_osvc", "osvc_products", "osvc_orders", ["tool_otools", 1], "tool_model", "model_anth", ["model_anth", 1], ["tool_model", 1], ["svc_tool", 1], ["chat_svc", 1], ["b_chat", 1]],
+        text: "Kết quả tool được gửi lại cho model. Model viết câu xác nhận, finishReason end_turn, câu trả lời về trình duyệt.",
+        code: "finishReason = end_turn" },
+    ]},
+    { id: "brief", name: "Structured output", kind: "model", focus: true, steps: [
+      // The reverse of tool calling: the model hands typed data back to the code instead of free text.
+      { title: "Vì sao cần", nodes: ["briefSvc"], edges: [], snips: ["brief_rec"],
+        text: "Mặc định model trả text tự do, code khó dùng. Muốn nhận object thì khai báo record làm khuôn." },
+      { title: "Gọi model với khuôn", nodes: ["briefSvc", "browser", "briefCtrl", "rsvc", "t_orders", "anth"],
+        edges: ["b_brief", "brief_svc", "brief_rsvc", "rsvc_orders", ["brief_rsvc", 1], "brief_anth", ["brief_anth", 1]], snips: ["brief_conv", "brief_call"],
+        text: "responseEntity(converter): Spring AI sinh JSON schema từ record và dặn model chỉ trả JSON đúng khuôn đó." },
+      { title: "Nhận object", nodes: ["briefSvc", "browser", "briefCtrl", "rsvc", "t_orders", "anth"],
+        edges: ["b_brief", "brief_svc", "brief_rsvc", "rsvc_orders", ["brief_rsvc", 1], "brief_anth", ["brief_anth", 1], ["brief_svc", 1], ["b_brief", 1]], snips: ["brief_entity"],
+        text: "Spring AI chuyển JSON thành object RevenueBrief; code dùng như object Java bình thường. Sai khuôn thì báo lỗi." },
+    ]},
+    { id: "test", name: "Testing", kind: "test", focus: true, steps: [
+      // LLM-as-a-judge with Spring AI's built-in evaluators: the test asks the real chat, then a second model call grades the answer.
+      { title: "Vì sao khó test AI", nodes: ["evals", "chatCtrl"], edges: ["evals_chat", ["evals_chat", 1]],
+        text: "Câu trả lời của model mỗi lần khác chữ, không so bằng assertEquals được. Spring AI dùng một lần gọi model nữa để chấm câu trả lời.",
+        code: "AnswerEvaluationLiveTest · @Tag(\"live\")" },
+      { title: "RelevancyEvaluator", nodes: ["evals", "chatCtrl", "anth"], edges: ["evals_chat", ["evals_chat", 1], "evals_anth", ["evals_anth", 1]], snips: ["eval_rel"],
+        text: "Đưa câu hỏi, chunk tri thức và câu trả lời cho model chấm: câu trả lời có đúng trọng tâm câu hỏi và khớp với tri thức không." },
+      { title: "FactCheckingEvaluator", nodes: ["evals", "chatCtrl", "anth"], edges: ["evals_chat", ["evals_chat", 1], "evals_anth", ["evals_anth", 1]], snips: ["eval_fact", "eval_fake"],
+        text: "Kiểm câu trả lời có dựa trên tài liệu không. Câu trả lời thật thì pass; câu bịa \"để được 30 ngày\" thì fail." },
+    ]},
+    { id: "mcp", name: "MCP", kind: "mcp", focus: true, steps: [
+      // The same @Tool methods the chat uses, now called by an outside AI client over MCP.
+      { title: "MCP là gì", nodes: ["claude", "mcpEp"], edges: ["cc_mcp"], snips: ["mcp_starter", "mcp_yaml"],
+        text: "Model Context Protocol là chuẩn mở để AI client bên ngoài gọi tool của ứng dụng. Thêm starter là app thành MCP server, endpoint /mcp." },
+      { title: "Đăng ký tool", nodes: ["claude", "mcpEp", "ctools", "ktools"], edges: ["cc_mcp", "mcp_ctools", "mcp_ktools"], snips: ["mcp_tools"],
+        text: "Dùng lại đúng các @Tool của chat, chỉ đăng ký 3 tool chỉ đọc: listProducts, getProduct, searchKnowledge. Client gọi tool như chatbot gọi, chạy qua cùng service." },
+    ]},
+  ];
+
+  // ───────────────────────── render ─────────────────────────
+  const svgNS = "http://www.w3.org/2000/svg";
+  const esc = s => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;");
+  // Squeeze a label into its box when the estimated width would overflow it.
+  const fit = (text, avail, px) => text.length * px > avail ? ` textLength="${avail}" lengthAdjust="spacingAndGlyphs"` : "";
+  let s = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Sơ đồ kiến trúc Kefir AI">`;
+  s += `<text class="lane-lb" x="20" y="40">CLIENT</text><text class="lane-lb" x="244" y="40">SPRING BOOT APP</text>`;
+  s += `<text class="lane-lb" x="920" y="40">AI PROVIDERS</text><text class="lane-lb" x="1076" y="40">DATA</text>`;
+  s += `<rect class="frame" x="230" y="50" width="672" height="738" rx="14"/>`;
+  s += `<rect class="frame" x="1066" y="100" width="234" height="636" rx="12"/>`;
+  s += `<text class="frame-lb" x="1076" y="88">PostgreSQL 17 + pgvector</text>`;
+  s += `<rect class="group" x="430" y="104" width="458" height="72" rx="10"/><text class="group-lb" x="440" y="118">KnowledgeService · ETL</text>`;
+  s += `<g class="grp k-obs" id="g-chatClient"><rect class="group" x="586" y="190" width="302" height="270" rx="10"/><text class="group-lb" x="598" y="206">ChatClient · advisor chain (ngoài → trong)</text></g>`;
+  s += `<g id="edges">${Object.values(E).map(e => `<path class="edge" id="e-${e.id}" d="${e.d}"/>`).join("")}</g>`;
+  s += `<g id="nodes">`;
+  for (const n of Object.values(N)) {
+    const table = n.id.startsWith("t_");
+    s += `<g class="node k-${n.kind}" id="n-${n.id}"><rect class="box" x="${n.x}" y="${n.y}" width="${n.w}" height="${n.h}" rx="${table ? 6 : 9}"/>`;
+    s += `<rect class="bar" x="${n.x + 7}" y="${n.y + 8}" width="3" height="${n.h - 16}" rx="1.5"/>`;
+    if (n.id === "browser") {
+      s += `<text class="lb" x="${n.x + 18}" y="${n.y + 26}">${n.label}</text><text class="sb" x="${n.x + 18}" y="${n.y + 42}"${fit(n.sub, n.w - 26, 6.1)}>${n.sub}</text>`;
+      SCREENS.forEach((name, i) => {
+        const y = n.y + 64 + i * 40;
+        s += `<rect x="${n.x + 16}" y="${y}" width="${n.w - 30}" height="30" rx="7" fill="var(--tint2)" stroke="var(--edge)"/><text class="sb" x="${n.x + 28}" y="${y + 19}" style="fill:var(--ink)">${name}</text>`;
+      });
+      s += `<text class="sb" x="${n.x + 18}" y="${n.y + 290}">fetch-event-source · SSE</text><text class="sb" x="${n.x + 18}" y="${n.y + 306}">Authorization: Bearer JWT</text>`;
+    } else if (n.id === "sec") {
+      s += `<text class="lb" x="${n.x + 18}" y="${n.y + 21}">${n.label}</text><text class="sb" x="${n.x + n.w - 12}" y="${n.y + 21}" text-anchor="end">oauth2-resource-server · quick-login → JWT 24h</text>`;
+    } else if (table) {
+      s += `<text class="lb" x="${n.x + 18}" y="${n.y + 19}" style="font:500 12px var(--font-mono)">${n.label}</text>`;
+      if (n.tag) s += `<text class="tag" x="${n.x + n.w - 10}" y="${n.y + 19}" text-anchor="end">${n.tag}</text>`;
+    } else {
+      const room = n.w - 26 - (n.tag ? n.tag.length * 6.2 + 8 : 0);
+      s += `<text class="lb" x="${n.x + 18}" y="${n.y + (n.h > 44 ? 23 : 17)}"${fit(n.label, room, 7)}>${n.label}</text><text class="sb" x="${n.x + 18}" y="${n.y + (n.h > 44 ? 39 : 31)}"${fit(n.sub, n.w - 26, 6.1)}>${esc(n.sub)}</text>`;
+      if (n.tag) s += `<text class="tag" x="${n.x + n.w - 10}" y="${n.y + 17}" text-anchor="end">${n.tag}</text>`;
+    }
+    s += `</g>`;
+  }
+  s += `</g><g id="dots"></g></svg>`;
+  document.getElementById("stage").innerHTML = s + `<div class="cpt" id="cpt" hidden></div>`;
+
+  const svg = document.querySelector("#stage svg");
+  const dotsG = svg.querySelector("#dots");
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  // ───────────────────────── state ─────────────────────────
+  let flow = FLOWS[0], idx = 0, timer = null, raf = null, live = [];
+  const $ = id => document.getElementById(id);
+
+  const tabs = document.querySelector(".tabs");
+  tabs.innerHTML = FLOWS.map((f, i) => `<button type="button" role="tab" class="k-${f.kind}" aria-selected="${i === 0}" data-i="${i}">${f.name}</button>`).join("");
+  tabs.onclick = e => { const b = e.target.closest("button[data-i]"); if (b) selectFlow(+b.dataset.i); };
+
+  function selectFlow(i) {
+    stop();
+    flow = FLOWS[i];
+    tabs.querySelectorAll("button").forEach((b, j) => b.setAttribute("aria-selected", String(j === i)));
+    $("steps").innerHTML = flow.steps.map((_, j) => `<button type="button" aria-label="Bước ${j + 1}" data-j="${j}"></button>`).join("");
+    show(0);
+  }
+  $("steps").onclick = e => { const b = e.target.closest("button[data-j]"); if (b) { stop(); show(+b.dataset.j); } };
+
+  function show(j) {
+    idx = Math.max(0, Math.min(flow.steps.length - 1, j));
+    const st = flow.steps[idx];
+    closeSnip();
+    const cpt = document.getElementById("cpt");
+    const concept = !!flow.concept;
+    svg.toggleAttribute("hidden", concept);
+    cpt.hidden = !concept;
+    ["roleRow", "whyRow"].forEach(id => $(id).hidden = !concept);
+    $("text").hidden = concept;
+    $("code").hidden = concept;
+    if (concept) {
+      cancelAnimationFrame(raf);
+      dotsG.innerHTML = "";
+      Concepts.mount(cpt, idx);
+      document.querySelector(".cap").className = `cap k-${st.kind}`;
+      $("n").textContent = `${String(idx + 1).padStart(2, "0")} / ${String(flow.steps.length).padStart(2, "0")}`;
+      $("flowname").textContent = `${flow.name} · ${st.group}`;
+      $("title").textContent = st.title;
+      $("role").textContent = st.role;
+      $("why").textContent = st.why;
+      $("steps").querySelectorAll("button").forEach((b, k) => {
+        b.classList.toggle("past", k < idx);
+        if (k === idx) b.setAttribute("aria-current", "step"); else b.removeAttribute("aria-current");
+      });
+      return;
+    }
+    Concepts.stop();
+    const inFlow = new Set();
+    flow.steps.forEach(x => { x.nodes.forEach(n => inFlow.add(n)); x.edges.forEach(e => { const id = Array.isArray(e) ? e[0] : e; inFlow.add(E[id].a); inFlow.add(E[id].b); }); });
+    const seen = new Set(flow.steps.slice(0, idx).flatMap(x => x.nodes));
+    const on = new Set(st.nodes);
+    const skip = new Set(st.skip || []);
+    const overview = flow.id === "overview";
+    for (const n of Object.values(N)) {
+      const g = svg.querySelector(`#n-${n.id}`);
+      g.classList.toggle("on", on.has(n.id) && !st.all);
+      g.classList.toggle("seen", seen.has(n.id) && !on.has(n.id));
+      // focus flows light only the current step's nodes, so each step adds to the picture instead of showing it all up front.
+      const lit = flow.focus ? on.has(n.id) : overview ? st.all || on.has(n.id) : inFlow.has(n.id);
+      g.classList.toggle("dimmed", skip.has(n.id) || !lit);
+      g.classList.toggle("pulse", on.has(n.id) && !st.all && !reduce);
+    }
+    const seq = st.edges.map(e => Array.isArray(e) ? { id: e[0], rev: e[1] === 1 } : { id: e, rev: false });
+    const hot = new Set(seq.map(x => x.id));
+    svg.querySelectorAll(".grp").forEach(g => g.classList.toggle("on", (st.groups || []).includes(g.id.slice(2))));
+    svg.querySelectorAll(".edge").forEach(p => {
+      const id = p.id.slice(2);
+      p.style.display = E[id].only && ![].concat(E[id].only).includes(flow.id) ? "none" : "";
+      p.setAttribute("class", `edge${hot.has(id) ? ` hot k-${flow.kind}` : ""}`);
+      const dim = st.all ? false : !hot.has(id);
+      p.classList.toggle("dimmed", dim);
+    });
+    // dots
+    dotsG.innerHTML = "";
+    live = seq.map(({ id, rev }, k) => {
+      const path = svg.querySelector(`#e-${id}`);
+      const c = document.createElementNS(svgNS, "circle");
+      c.setAttribute("r", "5"); c.setAttribute("class", `dot k-${flow.kind}`);
+      dotsG.appendChild(c);
+      return { path, len: path.getTotalLength(), rev, c, k };
+    });
+    startDots();
+    // caption
+    document.querySelector(".cap").className = `cap k-${flow.kind}`;
+    $("n").textContent = `${String(idx + 1).padStart(2, "0")} / ${String(flow.steps.length).padStart(2, "0")}`;
+    $("flowname").textContent = flow.name;
+    const snips = (st.snips || []).map(k => SNIP[k]);
+    // A condensed snippet's file name is left out when the same step also shows that file with line numbers.
+    const numbered = new Set(snips.filter(x => x.file).map(x => base(x.file)));
+    const refs = snips.filter(x => x.file || !numbered.has(x.ref)).map(ref);
+    $("code").textContent = [...refs, st.code].filter(Boolean).join(" · ");
+    $("code").classList.toggle("has-snip", snips.length > 0);
+    if (snips.length) { $("code").setAttribute("role", "button"); $("code").tabIndex = 0; $("code").setAttribute("aria-expanded", "false"); }
+    else { $("code").removeAttribute("role"); $("code").removeAttribute("tabindex"); $("code").removeAttribute("aria-expanded"); }
+    closeSnip();
+    $("title").textContent = st.title;
+    $("text").textContent = st.text;
+    $("steps").querySelectorAll("button").forEach((b, k) => {
+      b.classList.toggle("past", k < idx);
+      if (k === idx) b.setAttribute("aria-current", "step"); else b.removeAttribute("aria-current");
+    });
+  }
+
+  function startDots() {
+    cancelAnimationFrame(raf);
+    if (!live.length) return;
+    const t0 = performance.now(), D = Math.min(600, 1800 / live.length), cycle = D * live.length + 700;
+    const place = (d, p) => { const pt = d.path.getPointAtLength((d.rev ? 1 - p : p) * d.len); d.c.setAttribute("cx", pt.x); d.c.setAttribute("cy", pt.y); };
+    if (reduce) { live.forEach(d => place(d, 1)); return; }
+    const tick = now => {
+      for (const d of live) {
+        const p = ((now - t0) % cycle - d.k * D) / D;
+        d.c.setAttribute("opacity", p < 0 || p > 1 ? "0" : "1");
+        if (p >= 0 && p <= 1) place(d, p);
+      }
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+  }
+
+  // ───────────────────────── code pop-up (manual: click the file reference; Play never opens it) ─────────────────────────
+  const SNIP = JSON.parse(document.getElementById("snippets").textContent);
+  const base = f => f.split("/").pop();
+  const ref = s => s.ref || `${base(s.file)}:${s.from}${s.to > s.from ? `-${s.to}` : ""}`;
+  function closeSnip() { $("snip").hidden = true; if ($("code").hasAttribute("aria-expanded")) $("code").setAttribute("aria-expanded", "false"); }
+  function toggleSnip() {
+    const snips = flow.concept ? [] : (flow.steps[idx].snips || []).map(k => SNIP[k]);
+    if (!snips.length) return;
+    if (!$("snip").hidden) return closeSnip();
+    $("snip").innerHTML = snips.map(s => {
+      const indent = Math.min(...s.lines.filter(l => l.trim()).map(l => l.match(/^ */)[0].length));
+      // Line numbers only for code copied from the repo; condensed snippets have none to show.
+      const body = s.lines.map((l, k) => (s.from ? `<i>${s.from + k}</i>` : "") + esc(l.slice(indent))).join("\n");
+      return (snips.length > 1 ? `<div class="f">${esc(ref(s))}</div>` : "") + `<pre>${body}</pre>`;
+    }).join("");
+    $("snip").hidden = false;
+    $("code").setAttribute("aria-expanded", "true");
+  }
+  $("code").onclick = toggleSnip;
+  $("code").onkeydown = e => { if (e.key === "Enter") toggleSnip(); };
+  // A click anywhere outside the pop-up closes it; the file reference keeps its own toggle.
+  document.addEventListener("click", e => {
+    if (!$("snip").hidden && !e.target.closest("#snip, #code")) closeSnip();
+  });
+
+  function stop() { clearInterval(timer); timer = null; $("play").textContent = "▶ Play"; }
+  function play() {
+    if (timer) return stop();
+    if (idx >= flow.steps.length - 1) show(0);
+    $("play").textContent = "❚❚ Pause";
+    timer = setInterval(() => { if (idx >= flow.steps.length - 1) return stop(); show(idx + 1); }, 2000);
+  }
+  $("prev").onclick = () => { stop(); show(idx - 1); };
+  $("next").onclick = () => { stop(); show(idx + 1); };
+  $("play").onclick = play;
+  document.addEventListener("keydown", e => {
+    if (e.key === "Escape") closeSnip();
+    else if (e.key === "ArrowRight") { stop(); show(idx + 1); }
+    else if (e.key === "ArrowLeft") { stop(); show(idx - 1); }
+    else if (e.key === " " && e.target === document.body) { e.preventDefault(); play(); }
+    else if (/^[0-9]$/.test(e.key)) selectFlow(e.key === "0" ? 9 : +e.key - 1);
+  });
+
+  selectFlow(0);
+})();
+</script>
