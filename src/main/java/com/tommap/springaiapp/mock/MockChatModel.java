@@ -59,7 +59,7 @@ public class MockChatModel implements ChatModel {
                     .start();
             MockScript.Reply reply = reply(prompt);
             ChatResponse full = response(prompt, reply);
-            Flux<ChatResponse> chunks = reply.hasToolCalls() ? Flux.just(full) : textChunks(reply.text());
+            Flux<ChatResponse> chunks = reply.hasToolCalls() ? Flux.just(full) : textChunks(reply.text()).concatWithValues(finishChunk(reply));
             return chunks
                     .doOnComplete(() -> {
                         modelContext.setResponse(full);
@@ -73,6 +73,11 @@ public class MockChatModel implements ChatModel {
         return Flux.fromArray(text.split("(?<=\\s)"))
                 .delayElements(CHUNK_DELAY)
                 .map(chunk -> new ChatResponse(List.of(new Generation(new AssistantMessage(chunk)))));
+    }
+
+    /** Anthropic ends a stream with a chunk that has no text and only the stop reason (its message_delta event). */
+    private static ChatResponse finishChunk(MockScript.Reply reply) {
+        return new ChatResponse(List.of(new Generation(new AssistantMessage(""), finishMetadata(reply))));
     }
 
     private ChatModelObservationContext context(Prompt prompt, boolean streaming) {

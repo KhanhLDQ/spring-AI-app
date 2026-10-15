@@ -20,10 +20,22 @@ function StepBody({ step }: { step: TraceStep }) {
   }
   if (step.kind === "model") {
     return (
-      <p>
-        <b>{String(d.model ?? "")}</b> · {String(d.tokensIn ?? 0)} in · {String(d.tokensOut ?? 0)} out
-        {d.finishReason ? ` · ${String(d.finishReason)}` : ""}
-      </p>
+      <dl className="ins-kv">
+        <dt>Model</dt>
+        <dd>{String(d.model ?? "")}</dd>
+        <dt>Tokens</dt>
+        <dd>
+          {String(d.tokensIn ?? 0)} in · {String(d.tokensOut ?? 0)} out
+        </dd>
+        {d.finishReason ? (
+          <>
+            <dt>Finish</dt>
+            <dd>
+              <span className="pill">{String(d.finishReason)}</span>
+            </dd>
+          </>
+        ) : null}
+      </dl>
     );
   }
   if (step.kind === "tool") {
@@ -69,10 +81,14 @@ function StepBody({ step }: { step: TraceStep }) {
   if (step.kind === "memory") {
     const loaded = Number(d.messagesLoaded ?? 0);
     return (
-      <p>
-        <b>{loaded}</b> message(s) from this conversation added before the question · window <b>{String(d.windowSize ?? "")}</b>
-        {loaded === 0 && " · a new conversation starts empty"}
-      </p>
+      <dl className="ins-kv">
+        <dt>History</dt>
+        <dd>
+          {loaded} message(s) added before the question{loaded === 0 && " (new conversation)"}
+        </dd>
+        <dt>Window</dt>
+        <dd>{String(d.windowSize ?? "")} messages</dd>
+      </dl>
     );
   }
   if (step.kind === "route") {

@@ -2,6 +2,7 @@ package com.tommap.springaiapp.chat;
 
 import com.tommap.springaiapp.trace.TraceStep;
 import java.math.BigDecimal;
+import java.util.Map;
 
 /** Server-sent events of POST /api/chat/stream (see docs/contract.md). */
 sealed interface ChatEvent {
@@ -30,7 +31,9 @@ sealed interface ChatEvent {
         }
     }
 
-    record Done(long ms, long tokensIn, long tokensOut, BigDecimal cost, String cache) implements ChatEvent {
+    /** {@code stream}: what arrived on the model stream ({@link StreamTrace}); empty when the model was not called. */
+    record Done(long ms, long tokensIn, long tokensOut, BigDecimal cost, String cache, Map<String, Object> stream)
+            implements ChatEvent {
         public String name() {
             return "done";
         }

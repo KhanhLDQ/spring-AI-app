@@ -76,9 +76,11 @@ class ChatService {
         // Without tools the model is not told any exist, so it can only answer in words.
         ChatClient.ChatClientRequestSpec prompt = off.contains(AdvisorSwitch.TOOLS)
                 ? base : base.tools(catalogTools, orderTools).toolContext(toolContext);
+        StreamTrace streamed = new StreamTrace(traces.startNanos(traceId));
         Flux<ChatEvent> tokens = Flux.defer(() -> {
             RoundBreaks breaks = new RoundBreaks(() -> toolStepCount(traceId));
-            return prompt.stream().chatResponse().mapNotNull(breaks::next).map(ChatEvent.Token::new);
+            return prompt.stream().chatResponse().doOnNext(streamed::onChunk)
+                    .mapNotNull(breaks::next).map(ChatEvent.Token::new);
         });
 
         return tokens
@@ -86,7 +88,7 @@ class ChatService {
                 // Wait (off the reactive threads) for the model observation to stop, so its step and tokens are in.
                 .concatWith(Mono.fromRunnable(() -> traces.awaitObservations(traceId, OBSERVATION_WAIT))
                         .subscribeOn(Schedulers.boundedElastic())
-                        .thenMany(Flux.defer(() -> finish(traceId, startNanos))))
+                        .thenMany(Flux.defer(() -> finish(traceId, startNanos, streamed))))
                 .onErrorResume(error -> {
                     traces.finish(traceId);
                     log.warn("Chat turn failed: {}", error.getClass().getSimpleName());
@@ -141,7 +143,7 @@ class ChatService {
         }
     }
 
-    private Flux<ChatEvent> finish(String traceId, long startNanos) {
+    private Flux<ChatEvent> finish(String traceId, long startNanos, StreamTrace streamed) {
         List<TraceStep> steps = traces.finish(traceId);
         long tokensIn = sum(steps, "tokensIn");
         long tokensOut = sum(steps, "tokensOut");
@@ -152,7 +154,7 @@ class ChatService {
         }
         return Flux.concat(
                 Flux.fromIterable(steps).map(ChatEvent.Step::new),
-                Flux.just(new ChatEvent.Done(ms, tokensIn, tokensOut, cost, cacheOutcome(steps))));
+                Flux.just(new ChatEvent.Done(ms, tokensIn, tokensOut, cost, cacheOutcome(steps), streamed.view())));
     }
 
     private static String cacheOutcome(List<TraceStep> steps) {

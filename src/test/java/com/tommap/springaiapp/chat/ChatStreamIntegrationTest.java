@@ -57,6 +57,27 @@ class ChatStreamIntegrationTest {
     }
 
     @Test
+    void modelStepRecordsThePromptAsSentAndTheStreamItsFinishChunk() throws Exception {
+        ChatTestClient.Reply reply = chat.chat(chat.login("an"), "xin chào");
+
+        var model = reply.data("step").stream().filter(step -> "model".equals(step.get("kind").asString())).findFirst().orElseThrow();
+        var request = model.get("detail").get("request");
+        List<String> roles = request.get("messages").valueStream().map(m -> m.get("role").asString()).toList();
+        assertThat(roles).containsExactly("system", "user");
+        assertThat(request.get("messages").get(1).get("text").asString()).contains("xin chào");
+        assertThat(request.get("tools").valueStream().map(t -> t.asString())).contains("createOrder", "listProducts");
+        assertThat(model.get("detail").get("finishReason").asString()).isEqualTo("end_turn");
+        assertThat(model.get("detail").get("toolCalls")).isEmpty();
+
+        var stream = reply.data("done").getFirst().get("stream");
+        assertThat(stream.get("chunks").asInt()).isPositive();
+        assertThat(stream.get("firstChunkMs").asLong()).isLessThanOrEqualTo(stream.get("lastChunkMs").asLong());
+        var finish = stream.get("finishes").get(0);
+        assertThat(finish.get("reason").asString()).isEqualTo("end_turn");
+        assertThat(finish.get("chunk").asInt()).isEqualTo(stream.get("chunks").asInt());
+    }
+
+    @Test
     void streamRequiresAToken() throws Exception {
         mvc.perform(post("/api/chat/stream").contentType(MediaType.APPLICATION_JSON)
                         .content(ChatTestClient.requestJson("hi")))

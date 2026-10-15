@@ -10,16 +10,17 @@
 .pager button { background: var(--ins-surface); border: 1px solid var(--ins-line); color: var(--ins-ink); border-radius: .4rem; width: 1.8rem; height: 1.8rem; display: grid; place-items: center; }
 .pager button:disabled { opacity: .35; cursor: default; }
 .ins-body { overflow-y: auto; padding: 1rem 1.1rem 1.6rem; display: flex; flex-direction: column; gap: .9rem; }
-.tiles { display: grid; grid-template-columns: 1fr 1fr; gap: .55rem; }
-.tile { background: var(--ins-surface); border: 1px solid var(--ins-line); border-radius: .55rem; padding: .55rem .75rem; display: flex; flex-direction: column; gap: .15rem; }
-.tile span { font-size: .7rem; letter-spacing: .07em; text-transform: uppercase; color: var(--ins-muted); }
-.tile b { font: 500 1.15rem/1.2 var(--font-mono); font-variant-numeric: tabular-nums; }
-.tile small { color: var(--ins-muted); font: 400 .72rem var(--font-mono); }
-.tile.hit b { color: var(--k-cache); }
-.tbar { display: flex; height: .3rem; border-radius: 4px; overflow: hidden; background: var(--ins-line); margin-top: .2rem; }
-.tbar i { display: block; height: 100%; }
-.axis { display: flex; justify-content: space-between; font: 400 .68rem var(--font-mono); color: var(--ins-muted); padding-left: 0; }
-.st { background: var(--ins-surface); border: 1px solid var(--ins-line); border-left: 3px solid var(--kc); border-radius: .55rem; padding: .65rem .8rem; display: flex; flex-direction: column; gap: .5rem; animation: rise .3s ease-out; }
+.sec-h { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: -.35rem; }
+.sec-h span { font: 600 .68rem var(--font-mono); letter-spacing: .12em; text-transform: uppercase; color: var(--ins-muted); }
+.sec-h small { font: 400 .7rem var(--font-mono); color: var(--ins-muted); font-variant-numeric: tabular-nums; }
+.off-strip { display: flex; align-items: center; flex-wrap: wrap; gap: .35rem; padding: .5rem .7rem; border: 1px dashed var(--ins-line); border-radius: .55rem; }
+.off-strip span { font: 600 .68rem var(--font-mono); letter-spacing: .12em; text-transform: uppercase; color: var(--ins-muted); margin-right: .25rem; }
+.off-strip i { font: 500 .74rem var(--font-mono); font-style: normal; color: var(--ins-muted); border: 1px solid var(--ins-line); border-radius: .3rem; padding: .05rem .45rem; text-decoration: line-through; text-decoration-color: color-mix(in srgb, var(--ins-muted) 60%, transparent); }
+.ins-kv { display: grid; grid-template-columns: 4.6rem minmax(0, 1fr); gap: .3rem .75rem; margin: 0; font-size: .84rem; }
+.ins-kv dt { font: 500 .7rem/1.7 var(--font-mono); letter-spacing: .06em; text-transform: uppercase; color: var(--ins-muted); }
+.ins-kv dd { margin: 0; color: var(--ins-ink); font-family: var(--font-mono); font-size: .8rem; line-height: 1.7; }
+.pill { display: inline-block; font: 600 .74rem var(--font-mono); color: var(--kc); background: color-mix(in srgb, var(--kc) 14%, transparent); border: 1px solid color-mix(in srgb, var(--kc) 40%, transparent); border-radius: .3rem; padding: 0 .45rem; }
+.st { background: var(--ins-surface); border: 1px solid var(--ins-line); border-left: 3px solid var(--kc); border-radius: .55rem; padding: .75rem .9rem; display: flex; flex-direction: column; gap: .6rem; animation: rise .3s ease-out; }
 .st-cache, .st-cachewrite { --kc: var(--k-cache); } .st-memory { --kc: var(--k-memory); } .st-rag, .st-route { --kc: var(--k-rag); } .st-model { --kc: var(--k-model); } .st-tool { --kc: var(--k-tool); } .st.err { --kc: var(--k-err); }
 .st-h { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
 .st-h .ic { color: var(--kc); }
@@ -61,3 +62,25 @@ details.how .code { margin-top: .4rem; }
 .bar i { display: block; height: 100%; background: var(--k-rag); }
 .note { font-size: .78rem; color: var(--k-model); background: color-mix(in srgb, var(--k-model) 12%, transparent); border-radius: .35rem; padding: .25rem .55rem; }
 .note.ok { color: var(--k-cache); background: color-mix(in srgb, var(--k-cache) 12%, transparent); }
+
+/* Behind the scenes: the turn as a timeline of what went to the model and what came back */
+.bts { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .5rem; position: relative; }
+.bts::before { content: ""; position: absolute; left: 4.5rem; top: .4rem; bottom: .4rem; width: 2px; background: var(--ins-line); }
+.bts-e { display: grid; grid-template-columns: 4rem minmax(0, 1fr); gap: 1.1rem; align-items: start; --kc: var(--k-memory); }
+.bts-e.lane-out { --kc: var(--accent); } .bts-e.lane-in { --kc: var(--k-model); } .bts-e.lane-app { --kc: var(--k-tool); }
+.bts-ms { font: 500 .7rem/1.9 var(--font-mono); color: var(--ins-muted); text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; position: relative; }
+.bts-ms::after { content: ""; position: absolute; right: -.95rem; top: .5rem; width: .55rem; height: .55rem; border-radius: 50%; background: var(--ins-surface); border: 2px solid var(--kc); }
+.bts-card { background: var(--ins-surface); border: 1px solid var(--ins-line); border-radius: .55rem; padding: .55rem .75rem; display: flex; flex-direction: column; gap: .45rem; min-width: 0; }
+.bts-h { display: flex; align-items: center; gap: .55rem; flex-wrap: wrap; }
+.bts-h b { font-weight: 600; font-size: .9rem; }
+.bts-h .lane { font: 600 .64rem var(--font-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--kc); background: color-mix(in srgb, var(--kc) 12%, transparent); border-radius: .3rem; padding: .05rem .4rem; }
+.bts-p { margin: 0; font-size: .82rem; color: var(--ins-muted); }
+.bts-p b { color: var(--ins-ink); font-family: var(--font-mono); font-weight: 500; }
+.bts-wait { color: var(--ins-muted); font-size: .82rem; padding: .4rem 0; }
+.bts-msgs summary { cursor: pointer; font-size: .75rem; color: var(--ins-muted); }
+.bts-msgs summary:hover { color: var(--ins-ink); }
+.bts-msg { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: .2rem .5rem; margin-top: .5rem; align-items: baseline; }
+.bts-msg small { color: var(--ins-muted); font: 400 .7rem var(--font-mono); }
+.bts-msg pre { grid-column: 1 / -1; margin: 0; font: 400 .74rem/1.5 var(--font-mono); background: var(--ins-bg); border-radius: .35rem; padding: .4rem .55rem; white-space: pre-wrap; overflow-wrap: anywhere; max-height: 12rem; overflow-y: auto; color: var(--ins-ink); }
+.role { font: 600 .66rem var(--font-mono); text-transform: uppercase; letter-spacing: .06em; border-radius: .3rem; padding: .05rem .4rem; color: var(--ins-ink); background: var(--ins-bg); }
+.role-system { color: var(--k-memory); } .role-user { color: var(--accent); } .role-assistant { color: var(--k-model); } .role-tool { color: var(--k-tool); }
