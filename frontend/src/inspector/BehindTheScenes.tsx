@@ -108,7 +108,14 @@ function events(steps: TraceStep[], stats?: TurnStats): Event[] {
         ms: s.startMs,
         lane: "app",
         title: `@Tool ${String(s.detail.name ?? "")}`,
-        body: <span className="ret">→ {String(s.detail.result ?? "")}</span>,
+        body: (
+          <>
+            <p className="bts-p">
+              Arguments from the model: <b>{String(s.detail.args ?? "")}</b>
+            </p>
+            <span className="ret">→ {String(s.detail.result ?? "")}</span>
+          </>
+        ),
       }),
     );
   const hit = steps.find((s) => s.kind === "cache" && s.detail.hit);
@@ -116,6 +123,9 @@ function events(steps: TraceStep[], stats?: TurnStats): Event[] {
     out.push({ ms: hit.startMs, lane: "app", title: "Semantic cache hit", body: <p className="bts-p">Answered from the cache. No request was sent to the model.</p> });
   }
   const st = stats?.stream;
+  // Measured on Sonnet (2026-10-16): with tools sent, the text of the turn reaches the stream only after the last
+  // model round has finished, all within a few ms, instead of trickling in while the model writes.
+  const withTools = models.some((s) => ((s.detail as ModelDetail).request?.tools ?? []).length > 0);
   if (st?.chunks) {
     const source = models.length ? "model" : "cache";
     out.push({
@@ -125,6 +135,8 @@ function events(steps: TraceStep[], stats?: TurnStats): Event[] {
       body: (
         <p className="bts-p">
           First of <b>{st.chunks}</b> chunks from the {source}; <b>{st.textChunks ?? 0}</b> carried text and went to the browser as token events.
+          {withTools &&
+            " With tools sent, ToolCallingAdvisor checks each round for tool calls before passing it on, so the text arrives only after the last round has finished."}
         </p>
       ),
     });
@@ -135,7 +147,8 @@ function events(steps: TraceStep[], stats?: TurnStats): Event[] {
         title: `Chunk ${f.chunk} of ${st.chunks}`,
         body: (
           <p className="bts-p">
-            Carries <span className="pill">{f.reason}</span>. This is the moment the stream knows the model has stopped.
+            Carries <span className="pill">{f.reason}</span>.{" "}
+            {withTools ? "The last round ended without a tool call, so the tool loop is over." : "This is the moment the stream knows the model has stopped."}
           </p>
         ),
       }),
