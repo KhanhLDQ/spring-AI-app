@@ -50,7 +50,7 @@ public final class QueryRouter {
     }
 
     private static List<String> examples(String path) {
-        try (InputStream in = new ClassPathResource(path).getInputStream()) {
+        try (InputStream in = new ClassPathResource(path, QueryRouter.class.getClassLoader()).getInputStream()) {
             return new String(in.readAllBytes(), StandardCharsets.UTF_8).lines()
                     .map(String::strip)
                     .filter(line -> !line.isEmpty() && !line.startsWith("#"))
