@@ -11,29 +11,15 @@
   --ok: #17795A;   --ok-soft: #DCF2E9;
   --warn: #8E5500; --warn-soft: #FBEACB;
   --bad: #B3261E;  --bad-soft: #FBE0DD;
-  /* Inspector: always dark, in both themes */
-  --ins-bg: #12142A; --ins-surface: #1A1D38; --ins-line: #2B3052; --ins-ink: #E8EAF6; --ins-muted: #A0A7C4;
-  --k-cache: #4FD1A1; --k-memory: #AEB6DA; --k-rag: #5CC8DB; --k-model: #F2B84B; --k-tool: #AAA5FF; --k-err: #FF8F85;
+  /* Inspector: light like the rest of the app; white cards on a cool grey panel */
+  --ins-bg: #F1F3F8; --ins-surface: #FFFFFF; --ins-line: #DFE3EC; --ins-ink: #171A2B; --ins-muted: #5B6380;
+  /* Kind colours, deep enough to read as text on white */
+  --k-cache: #0E8A62; --k-memory: #5B6489; --k-rag: #0A7D93; --k-model: #B26A00; --k-tool: #5A52D5; --k-err: #C0352B;
   --font-display: "Bricolage Grotesque", "Trebuchet MS", system-ui, sans-serif;
   --font-body: "Public Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  /* Light only, whatever the OS theme: the demo is shared on screen and reads best light. */
   color-scheme: light;
-}
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --bg: #0E1020; --surface: #171A2E; --surface2: #20243B; --ink: #E8EAF5; --muted: #9EA5C0; --line: #2A2F4A;
-    --accent: #A5A0F8; --accent-ink: #0E1020; --accent-soft: #28285A;
-    --ok: #4FD1A1; --ok-soft: #113328; --warn: #F2B84B; --warn-soft: #3A2C0F; --bad: #FF8F85; --bad-soft: #451B1B;
-    --ins-bg: #0A0B18; --ins-surface: #14162B; --ins-line: #262A47;
-    color-scheme: dark;
-  }
-}
-:root[data-theme="dark"] {
-  --bg: #0E1020; --surface: #171A2E; --surface2: #20243B; --ink: #E8EAF5; --muted: #9EA5C0; --line: #2A2F4A;
-  --accent: #A5A0F8; --accent-ink: #0E1020; --accent-soft: #28285A;
-  --ok: #4FD1A1; --ok-soft: #113328; --warn: #F2B84B; --warn-soft: #3A2C0F; --bad: #FF8F85; --bad-soft: #451B1B;
-  --ins-bg: #0A0B18; --ins-surface: #14162B; --ins-line: #262A47;
-  color-scheme: dark;
 }
 
 * { box-sizing: border-box; }
