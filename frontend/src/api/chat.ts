@@ -9,6 +9,7 @@ export type StepKind = "cache" | "cachewrite" | "memory" | "route" | "rag" | "mo
 export type Switch = "memory" | "cache" | "rag" | "tools";
 /** In the order the demo turns them on: memory, then RAG, then the cache (it only stores RAG answers), then tools. */
 export const SWITCHES: Switch[] = ["memory", "rag", "cache", "tools"];
+export const SWITCH_LABELS: Record<Switch, string> = { memory: "Memory", cache: "Cache", rag: "RAG", tools: "Tools" };
 
 export interface TraceStep {
   kind: StepKind;
@@ -33,12 +34,40 @@ export interface RagDetail {
   topK: number;
 }
 
+/** What came down the stream, measured by the backend as each chunk passed; empty when nothing was streamed. */
+export interface StreamTrace {
+  chunks?: number;
+  textChunks?: number;
+  firstChunkMs?: number;
+  lastChunkMs?: number;
+  finishes?: { chunk: number; ms: number; reason: string }[];
+}
+
+/** One message of the prompt a model call received, as the ChatModel observation saw it. */
+export interface PromptMessage {
+  role: "system" | "user" | "assistant" | "tool";
+  chars: number;
+  text: string;
+  toolCalls?: string[];
+}
+
+/** The `model` step detail: the request that call sent and what came back. */
+export interface ModelDetail {
+  model?: string;
+  tokensIn?: number;
+  tokensOut?: number;
+  finishReason?: string;
+  toolCalls?: { name: string; args: string }[];
+  request?: { messages?: PromptMessage[]; tools?: string[]; model?: string; maxTokens?: number };
+}
+
 export interface TurnStats {
   ms: number;
   tokensIn: number;
   tokensOut: number;
   cost: number;
   cache: "HIT" | "MISS" | "OFF";
+  stream?: StreamTrace;
 }
 
 export interface StreamHandlers {

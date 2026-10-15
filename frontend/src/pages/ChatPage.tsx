@@ -6,7 +6,6 @@ import { usePolling } from "../api/usePolling";
 import { useAuth } from "../auth/AuthContext";
 import { CacheChip } from "../chat/CacheChip";
 import { OrderCard } from "../chat/OrderCard";
-import { ScriptBar } from "../chat/ScriptBar";
 import { RevenueCard } from "../chat/RevenueCard";
 import { SourceChips } from "../chat/SourceChips";
 import { ProductCards } from "../chat/ProductCards";
@@ -14,11 +13,9 @@ import { ToolChips } from "../chat/ToolChips";
 import { toolCalls } from "../chat/toolSteps";
 import { TurnMeta } from "../chat/TurnMeta";
 import { useChat } from "../chat/useChat";
-import { SWITCHES, type Switch } from "../api/chat";
+import { SWITCH_LABELS, SWITCHES, type Switch } from "../api/chat";
 import { Inspector } from "../inspector/Inspector";
 import { Resizer, usePanelSize } from "../layout/Resizer";
-
-const SWITCH_LABELS: Record<Switch, string> = { memory: "Memory", cache: "Cache", rag: "RAG", tools: "Tools" };
 
 export function ChatPage({ onOpenOrders }: { onOpenOrders: () => void }) {
   const { session, logout } = useAuth();
@@ -32,7 +29,6 @@ export function ChatPage({ onOpenOrders }: { onOpenOrders: () => void }) {
   const end = useRef<HTMLDivElement>(null);
   const [selected, setSelected] = useState(0);
   const inspectorWidth = usePanelSize("kefir.size.inspector", 435, 300, 900);
-  const scriptHeight = usePanelSize("kefir.size.scripts", 99, 34, 420);
   // The demo starts from a bare model and turns the advisors on one by one, so a new page opens with all off.
   const [off, setOff] = useState<ReadonlySet<Switch>>(() => new Set(SWITCHES));
   const toggle = (name: Switch) =>
@@ -46,7 +42,6 @@ export function ChatPage({ onOpenOrders }: { onOpenOrders: () => void }) {
       return next;
     });
   const offList = () => SWITCHES.filter((s) => off.has(s));
-  const [usedScripts, setUsedScripts] = useState<ReadonlySet<string>>(new Set());
 
   // A new turn pulls the Inspector to it; the user can then step back through earlier turns.
   useEffect(() => {
@@ -85,14 +80,6 @@ export function ChatPage({ onOpenOrders }: { onOpenOrders: () => void }) {
     }
     setDraft("");
     void send(question, offList());
-  }
-
-  function runScript(message: string) {
-    if (busy || !ready) {
-      return;
-    }
-    setUsedScripts((used) => new Set(used).add(message));
-    void send(message, offList());
   }
 
   return (
@@ -171,11 +158,6 @@ export function ChatPage({ onOpenOrders }: { onOpenOrders: () => void }) {
             ))}
             <div ref={end} />
           </div>
-        </div>
-
-        <div className="script-wrap" style={{ "--script-h": `${scriptHeight.value}px` } as CSSProperties}>
-          <Resizer size={scriptHeight} axis="y" direction={-1} label="Demo scripts height" className="script-resizer" />
-          <ScriptBar role={session!.user.role} disabled={busy || !ready} used={usedScripts} onRun={runScript} />
         </div>
 
         <form className="composer" onSubmit={submit}>
