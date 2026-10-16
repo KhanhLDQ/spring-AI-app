@@ -9,9 +9,10 @@ build/
 application-local.*
 
 # Not implementation: planning, mockups, reference material, local tooling.
-# The official demo script is the one exception: the demo machine needs it.
+# Exceptions: the official demo script (the demo machine needs it) and the BA training deck.
 docs/*
 !docs/DEMO-SCRIPT-OFFICIAL.md
+!docs/ba-training/
 .claude/
 HELP.md
 .env.*
