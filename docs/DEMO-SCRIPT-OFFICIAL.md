@@ -1,5 +1,26 @@
 # Spring AI Unboxed — kịch bản demo chính thức
 
+## Luồng buổi sharing (~45 phút + hỏi đáp)
+
+**Mạch chính:** một chatbot Kefir AI lớn dần qua từng phần. Mỗi phần giải quyết đúng chỗ còn thiếu của phần trước, nên cuối mỗi phần có một câu **Chuyển phần** để nối sang phần sau.
+
+| Phần | Thời gian | Câu hỏi của phần | Mảnh Spring AI |
+|---|---|---|---|
+| Mở đầu + 1. Introduction | ~5' | Vì sao cần một framework cho AI? | |
+| 1. Spring AI Concepts | ~8' | Các khối cơ bản là gì? | (từ vựng cho cả buổi) |
+| 2. Chat streaming | ~4' | Gọi model thế nào? | ChatModel, ChatClient, `stream()` |
+| 3. Memory | ~3' | Làm sao bot nhớ hội thoại? | ChatMemory, advisor |
+| 4. Upload PDF | ~3' | Đưa tài liệu của shop vào thế nào? | DocumentReader, Splitter, EmbeddingModel, VectorStore |
+| 5. RAG | ~4' | Làm sao bot trả lời bằng tài liệu đó? | QuestionAnswerAdvisor |
+| 6. Semantic cache | ~3' | Câu hỏi lặp lại có cần gọi model không? | advisor tự viết + VectorStore |
+| 7. Tool calling | ~5' | Làm sao bot làm việc thật (đặt đơn)? | `@Tool`, ToolCallingAdvisor |
+| 8. Structured output | ~3' | Làm sao code dùng được kết quả? | `responseEntity()` |
+| 9. Testing | ~2' | Làm sao biết bot trả lời đúng? | Evaluator |
+| 10. MCP | ~3' | AI khác dùng lại tool của app được không? | MCP server |
+| Kết thúc | ~2' | Mang về được gì? | |
+
+Phần "Trên slide" và "Trên bot" của mục 2–10 giữ như đã duyệt. Mục 1 chỉ ghi ý chính để nói theo, không phải lời đọc.
+
 ---
 
 ## Chuẩn bị
@@ -147,6 +168,71 @@ docker compose stop
 
 ---
 
+## 1. Mở đầu, Introduction và Spring AI Concepts (~13 phút)
+
+### Mở đầu (~1 phút, trước khi chiếu slide)
+- Mục tiêu buổi: hiểu các khối chính của Spring AI, thấy chúng chạy thật trên một app, biết khi nào dùng khối nào.
+- Cách đi: slide giải thích flow → chạy trên app → xem **Inspector** (cửa sổ nhìn vào bên trong mỗi lượt chat).
+- Câu hỏi: để cuối mỗi phần hoặc cuối buổi.
+
+### Trên slide: `demo-assets/architecture.html` → tab **Introduction**
+
+**01 · Thành phần của ứng dụng AI**
+- Gọi model chỉ là một phần nhỏ. Một chatbot thật cần thêm: prompt, lịch sử chat, tài liệu, tool, cache, metrics, testing.
+- Tự làm thì mỗi phần một thư viện, mỗi nhà cung cấp một SDK, và code nối giữa chúng do mình tự viết.
+- Câu dẫn sang slide sau: có cách nào chuẩn hoá cái khung ở giữa không?
+
+**02 · Spring AI**
+- Framework chính thức của Spring cho ứng dụng AI.
+- So với Spring Data (hàng mờ phía trên): Repository là interface chung, đổi database bằng cấu hình. Spring AI làm y như vậy với `ChatModel` và `VectorStore`.
+- Dùng đúng cách quen thuộc của Spring Boot: thêm starter, khai báo trong `application.yaml`, inject bean.
+
+**03 · Ưu điểm của Spring AI**
+- Bên trái là tự tích hợp: 3 SDK, 3 kiểu viết. Bên phải là một lớp Spring AI ở giữa.
+- Lấy ví dụ từ chính app: chat dùng Anthropic, embedding dùng OpenAI, vector lưu ở pgvector. Hai nhà cung cấp chạy cùng lúc qua cùng một bộ API.
+- Memory, RAG, cache gắn vào bằng **advisor**. Tool, structured output, observability có sẵn. Các phần demo sau sẽ đi lần lượt từng mảnh này.
+
+**04 · So sánh giải pháp**
+- Không có giải pháp "tốt nhất", chỉ có giải pháp hợp với stack.
+- SDK trực tiếp: linh hoạt, nhưng tự làm hết. LangChain: mạnh, nhưng là Python. LangChain4j: Java, nhiều tính năng, nhưng là framework riêng.
+- Spring AI: cùng Java, cùng chuẩn Spring Boot mà dự án đang dùng, nên ít code tích hợp nhất.
+- ⚠️ Nếu bị hỏi "Spring AI hay LangChain4j hơn?": cả hai đều dùng được cho Java. Chọn theo hệ sinh thái của dự án, không chê bên nào.
+
+**05 · Kiến trúc Kefir AI**
+- Giới thiệu app demo: chatbot cho một shop kefir.
+- Đi lướt từ trái sang phải: React (Chat, My orders, Admin, Knowledge, Control panel, Inspector) → Spring Boot (controller, `ChatService`, `ChatClient` với chuỗi advisor, tool) → PostgreSQL và pgvector → Anthropic, OpenAI.
+- Không cần giải thích từng khối: mỗi tab sau sẽ làm sáng đúng phần của nó trên chính sơ đồ này.
+
+**06 · Nội dung demo**
+- 9 phần, mỗi phần thêm một tính năng trên cùng chatbot.
+- Mạch: nói chuyện → nhớ → có tài liệu → trả lời từ tài liệu → nhanh và rẻ hơn → làm việc thật → trả dữ liệu cho code → kiểm chất lượng → mở cho AI khác.
+- Testing chỉ trình bày slide; MCP tuỳ máy demo.
+
+### Trên slide: tab **Spring AI Concepts** (14 slide, ~30 giây mỗi slide)
+
+Mục tiêu tab này là từ vựng, chưa có code. Mỗi slide nói một ý, rồi hẹn "sẽ thấy chạy thật ở phần N".
+
+| Slide | Ý chính | Gặp lại ở |
+|---|---|---|
+| ChatModel | Interface chung để gọi model; mỗi nhà cung cấp là một implementation, đổi bằng cấu hình | 2 |
+| ChatClient | API fluent gom prompt, advisor, tool và kiểu kết quả; chọn `call()` hay `stream()` | 2 |
+| Advisor | Lớp bao quanh mỗi lần gọi model, sửa request và response; thứ tự advisor quyết định hành vi. Đây là cách gắn tính năng mà không sửa code gọi model | 3, 5, 6 |
+| ChatMemory | Model không nhớ gì giữa các lần gọi; app lưu lịch sử và gửi lại. Thiếu memory thì "đổi thành 4 chai" vô nghĩa | 3, 7 |
+| EmbeddingModel | Biến câu thành vector; câu cùng nghĩa cho vector gần nhau, nên so được theo nghĩa | 4 |
+| VectorStore | Lưu vector, tìm top-k vector gần câu hỏi nhất; app dùng pgvector | 4, 5 |
+| Cosine Similarity | Điểm 0 → 1 theo góc giữa hai vector. Số đo thật: 0,27 không liên quan · 0,65 cùng chủ đề khác ý · 0,81 diễn đạt lại. Từ đây ra ngưỡng RAG 0,50 và cache 0,75 | 5, 6 |
+| RAG | Retrieve → Augment → Generate: tìm đoạn liên quan, chèn vào prompt, model trả lời kèm nguồn | 5 |
+| Upload Documents (ETL) | Read → Split → Embed → Store, làm một lần lúc tải tài liệu | 4 |
+| Tool Calling | Model chỉ **yêu cầu** gọi hàm, app mới là bên chạy hàm rồi gửi kết quả lại | 7 |
+| Structured Output | Đưa khuôn dữ liệu, nhận JSON đúng khuôn, chuyển thành object Java | 8 |
+| Observability | Đo thời gian, token, chi phí của từng bước; Inspector của app dựng trên dữ liệu này | xuyên suốt |
+| MCP | Giao thức chuẩn để AI client bên ngoài gọi tool của app: viết tool một lần, nhiều client dùng | 10 |
+| Evaluator | Dùng một model khác chấm câu trả lời (LLM-as-a-judge), vì câu trả lời AI không cố định từng chữ | 9 |
+
+**Chuyển phần:** "Đủ từ vựng rồi. Giờ bắt đầu từ cái đơn giản nhất: gọi model, chưa bật thêm gì."
+
+---
+
 ## 2. Chat streaming (~4 phút)
 
 ### Trên slide: `demo-assets/architecture.html` → tab **Chat streaming**
@@ -217,6 +303,8 @@ Không. Request lấy từ `ChatModelObservationContext.getRequest()`, response 
 ### Nếu có sự cố
 - **Không có chữ nào sau ~60 giây:** app báo timeout. Bấm **New chat** rồi gửi lại.
 
+**Chuyển phần:** "Bot trả lời được, nhưng mỗi lần gọi model là độc lập: nói tên xong, hỏi lại là quên."
+
 ---
 
 ## 3. Memory (~3 phút)
@@ -273,6 +361,21 @@ Tối đa `window-size` tin cho mỗi hội thoại; app đặt 20, trùng mặc
 **Quá 20 tin thì sao?**
 Mỗi lần lưu, `MessageWindowChatMemory` lấy toàn bộ tin, nối thêm tin mới, cắt còn 20 tin gần nhất, rồi `saveAll()`. Repository JDBC xoá hết dòng của hội thoại rồi ghi lại trong cùng một transaction, nên tin cũ **bị xoá khỏi bảng**, không chỉ bị ẩn khỏi prompt.
 
+**Bảng memory có tự xoá không? User spam thì bảng có phình không?**
+- **Trong một hội thoại: không phình.** Mỗi `conversationId` giữ tối đa 20 dòng; tin cũ hơn bị xoá khỏi bảng (như câu trên). Spam trong cùng một chat chỉ làm cửa sổ trượt, số dòng vẫn ≤ 20.
+- **Giữa các hội thoại: có phình.** Spring AI **không có TTL hay job dọn** cho chat memory. Mỗi lần New chat (hoặc F5) là một `conversationId` mới với tối đa 20 dòng, nên bảng tăng theo **số hội thoại**. App chỉ xoá khi Admin bấm **Reset everything** (`TRUNCATE`, `ChatHistoryService.clearAll()`).
+- **Chi phí thật của spam là ghi DB:** mỗi lượt `saveAll()` xoá rồi ghi lại cả cửa sổ (~20 dòng), không phải chỉ thêm 2 dòng.
+- **Làm production thì thêm:**
+  - Job định kỳ xoá hội thoại không hoạt động quá N ngày. Bảng có cột `timestamp` và index `(conversation_id, "timestamp")`:
+    ```sql
+    DELETE FROM spring_ai_chat_memory
+    WHERE conversation_id IN (SELECT conversation_id FROM spring_ai_chat_memory
+                              GROUP BY conversation_id HAVING max("timestamp") < now() - interval '30 days');
+    ```
+  - Gọi `chatMemory.clear(conversationId)` khi người dùng xoá hoặc đóng chat.
+  - Rate limit theo user và giới hạn số hội thoại mỗi user.
+- **Trong app hiện có:** câu hỏi tối đa 2000 ký tự (giới hạn cỡ mỗi dòng) và trần chi phí `kefir.budget.limit-usd: 5` (hết thì từ chối lượt chat). Chưa có job dọn và rate limit.
+
 **Đổi được số 20 không?**
 Được, nhiều hơn hay ít hơn đều được, miễn > 0 (0 hoặc âm: lỗi lúc khởi động `maxMessages must be greater than 0`). Đổi xong phải khởi động lại app.
 - **Ít hơn** (vd 4): nhớ ~2 lượt, prompt ngắn và rẻ, nhưng quên nhanh.
@@ -292,6 +395,8 @@ Bọc `MessageChatMemoryAdvisor` theo kiểu `BaseAdvisor` làm mất bước l�
 
 ### Nếu có sự cố
 - **Lượt 3 bot không nhớ tên:** kiểm Memory đã bật ở cả lượt 1 và lượt 3, và cả 3 lượt nằm trong **cùng một chat** (không bấm New chat ở giữa).
+
+**Chuyển phần:** "Bot đã nhớ hội thoại, nhưng chưa biết gì về shop: hỏi kefir mật ong để được bao lâu thì không trả lời được. Bước đầu là nạp tài liệu của shop vào."
 
 ---
 
@@ -377,6 +482,8 @@ Không đọc được chữ nên bị từ chối với thông báo cần OCR t
 ### Nếu có sự cố
 - **Lỗi 409 "trùng file":** PDF đã được tải từ lần tập trước. Control panel → **Reset everything**, rồi tải lại.
 
+**Chuyển phần:** "Tài liệu đã thành vector trong pgvector, nhưng chat chưa dùng tới. RAG nối hai phần này."
+
 ---
 
 ## 5. RAG (~4 phút)
@@ -448,6 +555,8 @@ Màn Knowledge (Admin) → **Test retrieval**: chạy `similaritySearch` top-5, 
 - **Lượt 2 vẫn nói không biết:** kiểm RAG đã bật, và ngưỡng RAG ở Control panel là 0,50 (Reset trả về mặc định).
 - **Lượt 3 không có chunk từ PDF:** PDF chưa tải, hoặc đã bị xoá do Reset hay đổi chunk size. Tải lại ở màn Knowledge.
 
+**Chuyển phần:** "Mỗi câu hỏi RAG phải nhúng, tìm, rồi gọi model: vài giây và tốn tiền. Khách lại hay hỏi cùng một ý theo nhiều cách."
+
 ---
 
 ## 6. Semantic cache (~3 phút)
@@ -502,11 +611,24 @@ Ví dụ "Kefir Mè Đen để được bao lâu?": gần chủ đề với câu
 **Ngưỡng 0,75 chọn thế nào?**
 Đo thật với `text-embedding-3-small`: câu diễn đạt lại đạt 0,80–0,82, câu cùng chủ đề khác ý chỉ 0,64–0,69, nên đặt 0,75 ở giữa. Kéo thanh ngưỡng cache ở Control panel xuống thấp thì sẽ HIT nhầm câu khác ý.
 
+**Cache có gắn với từng hội thoại không?**
+Không. Cache dùng chung cho mọi hội thoại và mọi user cùng role: lúc tra chỉ lọc `role` và 24 giờ, không lọc `conversationId` hay user. Câu user A hỏi ở chat này vẫn HIT cho user B ở chat khác.
+- An toàn nhờ phía **ghi**: chỉ lưu câu trả lời không phụ thuộc ngữ cảnh (không gọi tool, có chunk tài liệu, không có tin nhắn trước trong memory).
+- ⚠️ Phía **tra** chưa kiểm ngữ cảnh: câu hỏi tiếp nối kiểu "thế còn để được bao lâu?" về lý thuyết có thể HIT nhầm nếu điểm ≥ 0,75 (chưa đo). Production nên viết lại câu hỏi cho đứng độc lập trước khi tra (`RewriteQueryTransformer`), hoặc bỏ qua cache khi hội thoại đã có lịch sử.
+
 **Admin hỏi cùng câu có dùng cache của User không?**
 Không. Cache tách theo role (filter `role`), vì câu trả lời cho Admin và User có thể khác nhau.
 
 **Khi nào cache bị xoá?**
 Khi tri thức thay đổi (upload tài liệu, đổi chunk size, Reset), vì câu trả lời cũ dựa trên tài liệu cũ (`KnowledgeService.java:81`). Ngoài ra mỗi câu chỉ được dùng trong 24 giờ.
+
+**Bảng không có cột thời gian, sao biết quá 24 giờ?**
+Thời gian nằm trong cột `metadata` (JSON): lúc lưu, app ghi `createdAt` (epoch ms). Lúc tra, app gửi filter `role == USER AND createdAt >= bây giờ − 24h`; `PgVectorStore` dịch filter thành điều kiện SQL trên `metadata`, nên dòng quá hạn không được trả về.
+- ⚠️ Dòng quá hạn chỉ bị **bỏ qua**, không bị xoá; bảng chỉ dọn khi tri thức thay đổi hoặc Reset. Production nên có job xoá:
+  ```sql
+  DELETE FROM semantic_cache
+  WHERE (metadata->>'createdAt')::bigint < extract(epoch FROM now() - interval '24 hours') * 1000;
+  ```
 
 **HIT có lưu vào memory không?**
 Có, nếu Memory bật: cache tự ghi cặp hỏi–đáp vào ChatMemory, vì memory advisor không chạy ở lượt HIT. Trong demo Memory tắt nên không ghi.
@@ -517,6 +639,8 @@ HIT thì trả lời luôn, bỏ qua memory, RAG và model; đứng ngoài cùng
 ### Nếu có sự cố
 - **Lượt 2 vẫn MISS:** kiểm Cache và RAG đều bật ở lượt 1 (không có chunk thì không ghi), và ngưỡng cache ở Control panel là 0,75.
 - **Lượt 1 đã HIT:** câu này đã được cache từ lần tập trước. Reset rồi chạy lại.
+
+**Chuyển phần:** "Bot đã biết và trả lời nhanh, nhưng mới chỉ nói. Chưa làm được việc gì thật như xem tồn kho hay đặt đơn."
 
 ---
 
@@ -615,6 +739,8 @@ Không, chỉ lưu text hỏi/đáp. Vì vậy câu xác nhận phải có số 
 - **Hết hàng:** Reset everything (kho về mặc định).
 - **Trước buổi demo:** Reset everything, để xoá đơn từ các lần tập.
 
+**Chuyển phần:** "Đến giờ kết quả luôn là text cho người đọc. Khi code cần dùng kết quả để hiện lên UI hay lưu DB thì text tự do không đủ."
+
 ---
 
 ## 8. Structured output (~3 phút)
@@ -670,6 +796,8 @@ Có, như mọi lần gọi model, và được ghi vào ledger như lượt cha
 - **Không có thẻ doanh thu:** kiểm đang ở tab **Admin** và Tools đã bật (User hỏi thì bị chặn, như phần Tool calling).
 - **Generate brief báo 502:** model trả sai khuôn; bấm lại.
 
+**Chuyển phần:** "Đã có nhiều tính năng. Câu hỏi còn lại: đổi prompt, đổi model hay thêm tài liệu thì làm sao biết bot không trả lời sai?"
+
 ---
 
 ## 9. Testing: chấm câu trả lời AI (~2 phút, chỉ slide)
@@ -708,6 +836,8 @@ Có: mỗi test gọi model thật vài lần, khoảng $0,01 cho cả bộ, m�
 Được. `Evaluator` là interface chỉ có một method `evaluate()`, nên có thể tự viết kiểm tra riêng cho dự án.
 
 Lần gần nhất 4 test live xanh là chạy với **Haiku**; profile `demo` giờ là Sonnet và chưa chạy lại. Tránh nói "đã chạy xanh với Sonnet".
+
+**Chuyển phần:** "Tool hiện chỉ chatbot trong app dùng được. Phần cuối: cho AI client khác dùng lại chính các tool đó."
 
 ---
 
@@ -778,3 +908,27 @@ Cùng một method `@Tool`. Khác ở **ai là model**: trong chat là Claude do
 
 **Đã test chưa?**
 Có test tích hợp `McpServerIntegrationTest` chạy `initialize → tools/list → tools/call` qua HTTP thật. Demo với client thật cần máy dùng tài khoản cá nhân.
+
+---
+
+## Kết thúc (~2 phút)
+
+**Tóm lại theo mạch:**
+| Nhu cầu | Spring AI |
+|---|---|
+| Gọi model, đổi nhà cung cấp | `ChatModel`, `ChatClient` |
+| Nhớ hội thoại | `ChatMemory` + advisor |
+| Trả lời từ tài liệu | ETL, `VectorStore`, `QuestionAnswerAdvisor` |
+| Làm việc thật | `@Tool` |
+| Dữ liệu cho code | structured output |
+| Kiểm chất lượng | `Evaluator` |
+| Mở cho AI khác | MCP server |
+
+**3 ý mang về:**
+- Spring AI là cách làm AI theo chuẩn Spring: interface chung, đổi bằng cấu hình, dùng như mọi bean khác.
+- **Advisor** là trung tâm: memory, RAG, cache đều gắn vào cùng một chỗ, không sửa code gọi model.
+- Muốn đưa AI lên production thì phải **quan sát được** (observability, Inspector) và **test được** (Evaluator).
+
+**Nói rõ phần nào app tự viết:** semantic cache, router, Inspector. Các phần còn lại dùng thẳng Spring AI.
+
+Mời hỏi đáp.
