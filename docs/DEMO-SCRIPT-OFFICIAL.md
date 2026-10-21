@@ -65,7 +65,7 @@ docker compose stop
 > ⚠️ **Giả định, chưa chạy lần nào** (các `.ps1` chưa từng chạy). Verify trên máy demo 2026-10-17; sai chỗ nào thì sửa ngay tại đây.
 
 **Việc phải làm trên Mac trước (hôm nay):**
-- **Push code lên GitHub.** Chưa push thì máy Windows không pull được gì. Slide (`demo-assets/architecture.html`) và kịch bản này (`docs/DEMO-SCRIPT-OFFICIAL.md`) đã nằm trong git, nên pull là có; không cần chép tay.
+- **Code đã push lên GitHub** (2026-10-16, `main` = `88e5780`). Slide (`demo-assets/architecture.html`) và kịch bản này (`docs/DEMO-SCRIPT-OFFICIAL.md`) nằm trong git, nên pull là có; không cần chép tay.
 - **Dự phòng build:** build jar mới trên Mac (lệnh ở bước 2 macOS) và chép `target/spring-AI-app-*.jar` theo, phòng khi Maven trên Windows lỗi TLS.
 
 **0. Cần có trên máy Windows:**
