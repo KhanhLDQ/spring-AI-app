@@ -103,7 +103,15 @@ export function ChatPage({ onOpenOrders }: { onOpenOrders: () => void }) {
                 {off.size === SWITCHES.length ? "All on" : "All off"}
               </button>
             </div>
-            <button className="btn sm" onClick={() => void newChat()} disabled={busy}>
+            <button
+              className="btn sm"
+              onClick={() => {
+                // A new chat starts like a fresh page: empty conversation, every advisor off.
+                setOff(new Set(SWITCHES));
+                void newChat();
+              }}
+              disabled={busy}
+            >
               New chat
             </button>
           </div>
