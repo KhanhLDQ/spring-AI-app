@@ -629,6 +629,76 @@ button { font: inherit; color: inherit; cursor: pointer; }
       seq: ["e1", "e2", "e3", "e4"] },
   ];
 
+
+  // Introduction slides: same diagram style as the concepts, mixed into the Introduction tab around the architecture slide.
+  const INTRO = [
+    { c: true, title: "Gọi AI không chỉ là gọi model", kind: "model", labels: ["Bài toán", "Nếu tự làm"],
+      role: "Một chatbot thật cần nhiều thứ quanh lời gọi model.",
+      why: "Tự viết và tự nối từng phần, cho từng nhà cung cấp.",
+      // The pieces sit in one frame between the app and the model; the lines stop at the frame instead of crossing the pieces.
+      nodes: [n("app", 20, 185, 130, 70, "App", "", "svc"), n("m", 850, 185, 130, 70, "Model", "Claude · GPT", "model"),
+              ...[["Prompt", "svc"], ["Chat history", "memory"], ["Documents", "rag"], ["Tools", "tool"]].map(([l, k], i) => n(`k${i}`, 236 + i * 135, 120, 125, 56, l, "", k)),
+              ...[["Cache", "cache"], ["Metrics", "obs"], ["Testing", "test"]].map(([l, k], i) => n(`b${i}`, 303 + i * 135, 264, 125, 56, l, "", k))],
+      edges: [["e1", null, null, null, null, null, [[150, 220], [210, 220]]], ["e2", null, null, null, null, null, [[790, 220], [850, 220]]]],
+      seq: ["e1", "e2", ["e2", 1], ["e1", 1]],
+      extra: `<rect x="210" y="70" width="580" height="300" rx="16" fill="none" stroke="var(--edge)" stroke-width="1.6" stroke-dasharray="6 6"/>
+        <text class="note" x="500" y="420" text-anchor="middle">mỗi phần một thư viện, một cách viết</text>` },
+
+    { c: true, title: "Spring AI là gì", kind: "obs",
+      role: "Dự án chính thức của Spring: API chung để làm việc với model và vector database.",
+      why: "Dev Spring dùng lại cách quen thuộc: starter, application.yaml, inject bean.",
+      nodes: [n("sd", 20, 50, 190, 70, "Spring Data", "quen thuộc", "db", null, { muted: true }), n("rp", 300, 50, 200, 70, "Repository", "interface", "db", null, { muted: true }),
+              n("dbs", 590, 50, 390, 70, "PostgreSQL · MySQL · MongoDB", "", "db", null, { muted: true }),
+              n("sai", 20, 180, 190, 210, "Spring AI", "", "obs"),
+              n("cm", 300, 190, 200, 70, "ChatModel", "interface", "model"), n("pv", 590, 190, 390, 70, "Anthropic · OpenAI · Ollama", "", "model"),
+              n("vs", 300, 310, 200, 70, "VectorStore", "interface", "db"), n("vv", 590, 310, 390, 70, "pgvector · Redis · Chroma", "", "db")],
+      edges: [["d1", "sd", "r", "rp", "l", "alt"], ["d2", "rp", "r", "dbs", "l", "alt"],
+              ["a1", "sai", "r", "cm", "l", null, null, 225], ["a2", "cm", "r", "pv", "l"],
+              ["b1", "sai", "r", "vs", "l", null, null, 345], ["b2", "vs", "r", "vv", "l"]],
+      seq: ["a1", "a2", "b1", "b2"],
+      extra: `<text class="note k" x="300" y="160">giống Spring Data, nhưng cho AI</text><text class="note" x="590" y="425">đổi nhà cung cấp: đổi cấu hình</text>` },
+
+    { c: true, title: "Ưu điểm", kind: "obs", labels: ["Tự viết", "Spring AI"],
+      role: "Mỗi nhà cung cấp một SDK; tự ghép lịch sử, tài liệu, tool, đo đạc.",
+      why: "API chung; advisor gắn memory, RAG, cache; tool, observability có sẵn.",
+      nodes: [n("a", 20, 190, 120, 60, "App", "", "svc"),
+              n("s1", 230, 70, 210, 56, "Anthropic SDK", "", "svc", null, { muted: true }), n("s2", 230, 192, 210, 56, "OpenAI SDK", "", "svc", null, { muted: true }),
+              n("s3", 230, 314, 210, 56, "JDBC · SQL vector", "", "svc", null, { muted: true }),
+              n("b", 520, 190, 110, 60, "App", "", "svc"), n("cc", 665, 110, 150, 220, "Spring AI", "", "obs", ["ChatClient", "EmbeddingModel", "VectorStore"]),
+              n("p1", 850, 70, 130, 56, "Anthropic", "", "model"), n("p2", 850, 192, 130, 56, "OpenAI", "", "embed"), n("p3", 850, 314, 130, 56, "pgvector", "", "db")],
+      edges: [["l1", "a", "r", "s1", "l", "alt"], ["l2", "a", "r", "s2", "l", "alt"], ["l3", "a", "r", "s3", "l", "alt"],
+              ["r0", "b", "r", "cc", "l"], ["r1", "cc", "r", "p1", "l"], ["r2", "cc", "r", "p2", "l"], ["r3", "cc", "r", "p3", "l"]],
+      seq: ["r0", "r1", "r2", "r3"],
+      extra: `<line class="axis" x1="480" y1="30" x2="480" y2="410" stroke-dasharray="4 6"/>
+        <text class="note" x="20" y="40">TỰ VIẾT</text><text class="note k" x="520" y="40">SPRING AI</text>
+        <text class="note" x="20" y="420">3 API khác nhau, tự ghép</text><text class="note k" x="520" y="420">API chung, đổi bằng cấu hình</text>` },
+
+    { c: true, title: "So sánh giải pháp", kind: "obs", labels: ["So sánh", "Lựa chọn"],
+      role: "Mỗi giải pháp phù hợp với một ngôn ngữ và hệ sinh thái riêng.",
+      why: "Spring AI: cùng ngôn ngữ và chuẩn Spring Boot của dự án, ít code tích hợp nhất.",
+      nodes: [n("o1", 20, 40, 225, 190, "Gọi SDK trực tiếp", "mọi ngôn ngữ", "svc", ["", "linh hoạt nhất", "tự viết mọi thứ"], { muted: true }),
+              n("o2", 263, 40, 225, 190, "LangChain", "Python", "svc", ["", "hệ sinh thái lớn", "khác stack Java"], { muted: true }),
+              n("o3", 506, 40, 225, 190, "LangChain4j", "Java", "svc", ["", "nhiều tính năng", "framework riêng"], { muted: true }),
+              n("o4", 749, 40, 231, 190, "Spring AI", "Java · Spring", "obs", ["", "chuẩn Spring Boot", "đúng stack của team"]),
+              n("team", 420, 320, 260, 70, "Team", "Java · Spring Boot", "http")],
+      edges: [["e1", "team", "r", "o4", "b"]],
+      seq: ["e1"] },
+  ];
+
+  const AGENDA = (() => {
+    const items = [["Chat streaming", "ChatClient", "model"], ["Memory", "ChatMemory", "memory"], ["Upload PDF", "ETL", "embed"],
+      ["RAG", "QuestionAnswerAdvisor", "rag"], ["Semantic cache", "SemanticCacheAdvisor", "cache"], ["Tool calling", "@Tool", "tool"],
+      ["Structured output", "entity()", "model"], ["Testing", "Evaluator", "test"], ["MCP", "MCP server", "mcp"]];
+    const at = i => i < 5 ? [20 + i * 196, 90] : [118 + (i - 5) * 196, 280];
+    const nodes = items.map(([label, sub, kind], i) => n(`a${i}`, ...at(i), 180, 70, label, sub, kind));
+    const edges = items.slice(1).map((_, i) => i === 4
+      ? [`e${i}`, null, null, null, null, null, [[894, 160], [894, 220], [208, 220], [208, 280]]]
+      : [`e${i}`, `a${i}`, "r", `a${i + 1}`, "l"]);
+    return { c: true, title: "Nội dung demo", kind: "obs",
+      nodes, edges, seq: edges.map(e => e[0]),
+      extra: items.map((_, i) => `<text class="note" x="${at(i)[0] + 4}" y="${at(i)[1] - 10}">${String(i + 1).padStart(2, "0")}</text>`).join("") };
+  })();
+
   function edgePath(c, e) {
     const [id, a, as, b, bs, cls, pts, ay, by] = e;
     if (pts) return { id, cls, d: "M" + pts.map(p => p.join(",")).join(" L") };
@@ -642,7 +712,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 
     let raf = null;
     function mount(container, idx) {
-      const c = C[idx];
+      const c = typeof idx === "number" ? C[idx] : idx;
     const edges = c.edges.map(e => edgePath(c, e));
     const hotIds = new Set(c.seq.map(x => Array.isArray(x) ? x[0] : x));
     let s = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Sơ đồ ${esc(c.title)}" class="k-${c.kind}">`;
@@ -695,40 +765,18 @@ button { font: inherit; color: inherit; cursor: pointer; }
     raf = requestAnimationFrame(tick);
   }
 
-    return { list: C, mount, stop };
+    return { list: C, intro: INTRO, agenda: AGENDA, mount, stop };
   })();
 
   // Each step lists its edges in the order the code runs them; the dots travel them one after another.
   const BACK = [["tool_model", 1], ["know_tool", 1], ["mem_know", 1], ["cache_mem", 1], ["svc_pipe", 1], ["chat_svc", 1], ["b_chat", 1]];
   const FLOWS = [
-    { id: "overview", name: "Tổng quan", kind: "obs", steps: [
+    { id: "overview", name: "Introduction", kind: "obs", steps: [
+      ...Concepts.intro,
       { title: "Kiến trúc Kefir AI", nodes: Object.keys(N), edges: [], all: true,
-        text: "React · Spring Boot App · PostgreSQL + pgvector · AI providers",
+        text: "React · Spring Boot · PostgreSQL và pgvector · Anthropic, OpenAI",
         code: "pom.xml · spring-ai-bom 2.0.1" },
-      { title: "ChatClient / ChatModel", nodes: ["modelA", "anth"], groups: ["chatClient"], edges: ["model_anth"],
-        text: "ChatClient: API để ứng dụng gọi model. ChatModel: interface kết nối tới nhà cung cấp model.",
-        code: "chat/ChatService.java:70-81 · application-demo.yaml:7-12" },
-      { title: "Advisor", nodes: ["cacheA", "memA", "knowA", "toolA"], edges: ["svc_pipe", "cache_mem", "mem_know", "know_tool", "tool_model"],
-        text: "Lớp xử lý bao quanh mỗi lần gọi model, chạy theo getOrder(): sửa request trước khi gửi, xử lý response sau khi nhận.",
-        code: "chat/ChatClientConfiguration.java:49-51" },
-      { title: "ChatMemory", nodes: ["memA", "t_cm"], edges: ["mem_cm"],
-        text: "Lưu lịch sử hội thoại, giúp model hiểu ngữ cảnh của các lượt trước.",
-        code: "chat/ChatClientConfiguration.java:31-35" },
-      { title: "EmbeddingModel / VectorStore", nodes: ["cacheA", "knowA", "openai", "t_sc", "t_vs"], edges: ["cache_oai", "cache_sc", "know_oai", "know_vs"],
-        text: "EmbeddingModel chuyển văn bản thành vector. VectorStore lưu vector và tìm theo độ tương đồng, ở đây là pgvector.",
-        code: "application.yaml:39 · knowledge/KnowledgeConfiguration.java" },
-      { title: "Upload Documents", nodes: ["knowCtrl", "reader", "split", "vstore", "openai", "t_vs"], edges: ["b_know", "know_reader", "reader_split", "split_vstore", "vstore_oai", "vstore_vs"],
-        text: "Nạp tài liệu vào VectorStore để model tra cứu khi trả lời (RAG).",
-        code: "knowledge/KnowledgeService.java:64-72" },
-      { title: "Tool Calling", nodes: ["toolA", "otools", "ctools"], edges: ["tool_otools", "tool_ctools"],
-        text: "Cho phép model gọi hàm của ứng dụng để lấy dữ liệu hoặc thực hiện hành động.",
-        code: "order/OrderTools.java · catalog/CatalogTools.java" },
-      { title: "Observability", nodes: ["modelA", "toolA", "trace"], edges: ["model_trace", "tool_trace", "trace_svc"],
-        text: "Ghi nhận metrics và tracing cho mỗi lần gọi model và tool, phục vụ theo dõi và debug.",
-        code: "trace/TraceObservationHandler.java:30-73" },
-      { title: "MCP", nodes: ["claude", "mcpEp", "ctools", "ktools"], edges: ["cc_mcp", "mcp_ctools", "mcp_ktools"],
-        text: "Model Context Protocol: chuẩn mở để client AI bên ngoài gọi tool của ứng dụng.",
-        code: "mcp/McpConfiguration.java:18-19" },
+      Concepts.agenda,
     ]},
     { id: "concepts", name: "Spring AI Concepts", kind: "obs", concept: true, steps: Concepts.list },
     { id: "stream", name: "Chat streaming", kind: "model", focus: true, steps: [
@@ -922,19 +970,25 @@ button { font: inherit; color: inherit; cursor: pointer; }
     const st = flow.steps[idx];
     closeSnip();
     const cpt = document.getElementById("cpt");
-    const concept = !!flow.concept;
+    // A step with c: true is drawn like a concept slide, so one tab can mix them with the architecture diagram.
+    const concept = !!flow.concept || !!st.c;
     svg.toggleAttribute("hidden", concept);
     cpt.hidden = !concept;
-    ["roleRow", "whyRow"].forEach(id => $(id).hidden = !concept);
+    // A slide without role/why text (the demo agenda) shows only its title.
+    $("roleRow").hidden = !concept || !st.role;
+    $("whyRow").hidden = !concept || !st.why;
     $("text").hidden = concept;
     $("code").hidden = concept;
     if (concept) {
       cancelAnimationFrame(raf);
       dotsG.innerHTML = "";
-      Concepts.mount(cpt, idx);
+      Concepts.mount(cpt, flow.concept ? idx : st);
       document.querySelector(".cap").className = `cap k-${st.kind}`;
       $("n").textContent = `${String(idx + 1).padStart(2, "0")} / ${String(flow.steps.length).padStart(2, "0")}`;
-      $("flowname").textContent = `${flow.name} · ${st.group}`;
+      $("flowname").textContent = st.group ? `${flow.name} · ${st.group}` : flow.name;
+      const [roleLb, whyLb] = st.labels || ["Vai trò", "Vì sao cần"];
+      $("roleRow").querySelector("b").textContent = roleLb;
+      $("whyRow").querySelector("b").textContent = whyLb;
       $("title").textContent = st.title;
       $("role").textContent = st.role;
       $("why").textContent = st.why;
@@ -946,8 +1000,9 @@ button { font: inherit; color: inherit; cursor: pointer; }
     }
     Concepts.stop();
     const inFlow = new Set();
-    flow.steps.forEach(x => { x.nodes.forEach(n => inFlow.add(n)); x.edges.forEach(e => { const id = Array.isArray(e) ? e[0] : e; inFlow.add(E[id].a); inFlow.add(E[id].b); }); });
-    const seen = new Set(flow.steps.slice(0, idx).flatMap(x => x.nodes));
+    const arch = flow.steps.filter(x => !x.c);
+    arch.forEach(x => { x.nodes.forEach(n => inFlow.add(n)); x.edges.forEach(e => { const id = Array.isArray(e) ? e[0] : e; inFlow.add(E[id].a); inFlow.add(E[id].b); }); });
+    const seen = new Set(flow.steps.slice(0, idx).filter(x => !x.c).flatMap(x => x.nodes));
     const on = new Set(st.nodes);
     const skip = new Set(st.skip || []);
     const overview = flow.id === "overview";
