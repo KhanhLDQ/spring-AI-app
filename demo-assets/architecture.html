@@ -1,5 +1,5 @@
 <meta charset="utf-8">
-<title>Kefir AI Architecture</title>
+<title>Kefir AI App</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=JetBrains+Mono:wght@400;500;600&family=Public+Sans:wght@400;500;600;700&display=swap">
@@ -100,6 +100,39 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .hint { color: var(--muted); font-size: 12px; }
 
 
+/* Cover slide (first slide of the Introduction tab): a box that opens and lets the Spring AI parts float out. Pure CSS 3D, no library, so it also works offline. */
+.cover { position: relative; width: 100%; height: 100%; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: center; gap: 24px; padding: 24px clamp(16px, 4vw, 64px); overflow: hidden;
+  background: radial-gradient(60% 70% at 72% 45%, color-mix(in srgb, var(--accent) 11%, transparent), transparent 70%); }
+.cover .txt { position: relative; z-index: 1; padding-left: 2vw; animation: cv-in .9s ease-out both; }
+.cover .eyebrow { font: 600 12px var(--font-mono); letter-spacing: .22em; color: var(--accent); text-transform: uppercase; }
+.cover h1 { margin: 14px 0 0; font: 800 clamp(48px, 6.4vw, 104px)/.92 var(--font-display); letter-spacing: -.035em; color: var(--ink-strong); }
+.cover h1 span { display: block; color: transparent; background: linear-gradient(100deg, var(--accent), var(--k-obs) 45%, var(--k-rag)); -webkit-background-clip: text; background-clip: text; }
+.cover .scene { position: relative; height: min(100%, 560px); min-height: 380px; perspective: 1100px; perspective-origin: 50% 30%; }
+.cover .zoom { position: absolute; inset: 0; transform-style: preserve-3d; }
+@media (min-width: 1400px) { .cover .zoom { transform: scale(1.3); } }
+@media (min-width: 1750px) { .cover .zoom { transform: scale(1.5); } }
+.cover .rig { position: absolute; left: 46%; top: 50%; transform-style: preserve-3d; animation: cv-spin 16s linear infinite; }
+.cover .rig > * { position: absolute; transform-style: preserve-3d; }
+/* The box only turns (right to left): pale accent faces, faint rings on the floor. */
+.cover .face { left: -90px; top: -90px; width: 180px; height: 180px; border: 1.5px solid color-mix(in srgb, var(--accent) 55%, var(--edge)); border-radius: 6px;
+  background: linear-gradient(160deg, color-mix(in srgb, var(--accent) 9%, #FFFFFF), color-mix(in srgb, var(--accent) 20%, #FFFFFF)); backface-visibility: visible; }
+.cover .face.f { transform: translateZ(90px); display: grid; place-items: center; }
+.cover .face.f em { font: 800 22px var(--font-display); font-style: normal; color: var(--accent); letter-spacing: -.02em; text-align: center; line-height: 1.05; }
+.cover .face.f em small { display: block; margin-top: 6px; font: 500 10.5px var(--font-mono); letter-spacing: .14em; color: var(--muted); }
+.cover .face.bk { transform: rotateY(180deg) translateZ(90px); }
+.cover .face.r { transform: rotateY(90deg) translateZ(90px); }
+.cover .face.l { transform: rotateY(-90deg) translateZ(90px); }
+.cover .face.bt { transform: rotateX(-90deg) translateZ(90px); }
+.cover .face.lid { transform: rotateX(90deg) translateZ(90px); }
+.cover .floor { left: -280px; top: -280px; width: 560px; height: 560px; border-radius: 50%; transform: rotateX(90deg) translateZ(-91px);
+  background: repeating-radial-gradient(circle, transparent 0 34px, color-mix(in srgb, var(--accent) 16%, transparent) 34px 35.5px);
+  -webkit-mask: radial-gradient(closest-side, #000 55%, transparent); mask: radial-gradient(closest-side, #000 55%, transparent); }
+.cover .shadow { left: -150px; top: -150px; width: 300px; height: 300px; border-radius: 50%; transform: rotateX(90deg) translateZ(-92px);
+  background: radial-gradient(closest-side, #171A2B24, transparent); }
+@keyframes cv-in { from { opacity: 0; transform: translateY(14px); } }
+@keyframes cv-spin { from { transform: rotateX(-20deg) rotateY(0deg); } to { transform: rotateX(-20deg) rotateY(-360deg); } }
+@media (prefers-reduced-motion: reduce) { .cover *, .cover .txt { animation-duration: .001s !important; animation-delay: 0s !important; animation-iteration-count: 1 !important; } }
+
 /* Spring AI concepts view (scoped to .cpt so it never touches the architecture diagram) */
 [hidden] { display: none !important; }
 .cpt { width: 100%; height: 100%; }
@@ -151,7 +184,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 
 <div class="app">
   <header class="top">
-    <div class="brand"><i>K</i><div><h1>Kefir AI Architecture</h1><small>Spring Boot 4.1.1 · Java 25 · Spring AI 2.0.1 · React 19 · PostgreSQL 17 + pgvector</small></div></div>
+    <div class="brand"><i>K</i><div><h1>Kefir AI App</h1><small>React 19 · Java 25 · Spring Boot 4.1.1 · Spring AI 2.0.1 · PostgreSQL 17 + pgvector</small></div></div>
     <nav class="tabs" role="tablist" aria-label="Luồng"></nav>
   </header>
   <div class="stage" id="stage"></div>
@@ -770,8 +803,21 @@ button { font: inherit; color: inherit; cursor: pointer; }
 
   // Each step lists its edges in the order the code runs them; the dots travel them one after another.
   const BACK = [["tool_model", 1], ["know_tool", 1], ["mem_know", 1], ["cache_mem", 1], ["svc_pipe", 1], ["chat_svc", 1], ["b_chat", 1]];
+  // Cover slide: a closed box that keeps turning.
+  const COVER = `<div class="cover">
+      <div class="txt">
+        <div class="eyebrow">Tech sharing · 23.10.2026</div>
+        <h1>Spring AI<span>Unboxed</span></h1>
+      </div>
+      <div class="scene" aria-hidden="true"><div class="zoom"><div class="rig">
+        <div class="floor"></div><div class="shadow"></div>
+        <div class="face bt"></div><div class="face bk"></div><div class="face l"></div><div class="face r"></div>
+        <div class="face f"><em>Spring AI<small>2.0.1</small></em></div><div class="face lid"></div>
+      </div></div></div>
+    </div>`;
   const FLOWS = [
     { id: "overview", name: "Introduction", kind: "obs", steps: [
+      { c: true, cover: true, title: "Spring AI Unboxed", kind: "obs" },
       ...Concepts.intro,
       { title: "Kiến trúc Kefir AI", nodes: Object.keys(N), edges: [], all: true,
         text: "React · Spring Boot · PostgreSQL và pgvector · Anthropic, OpenAI",
@@ -982,7 +1028,8 @@ button { font: inherit; color: inherit; cursor: pointer; }
     if (concept) {
       cancelAnimationFrame(raf);
       dotsG.innerHTML = "";
-      Concepts.mount(cpt, flow.concept ? idx : st);
+      if (st.cover) { Concepts.stop(); cpt.innerHTML = COVER; }
+      else Concepts.mount(cpt, flow.concept ? idx : st);
       document.querySelector(".cap").className = `cap k-${st.kind}`;
       $("n").textContent = `${String(idx + 1).padStart(2, "0")} / ${String(flow.steps.length).padStart(2, "0")}`;
       $("flowname").textContent = st.group ? `${flow.name} · ${st.group}` : flow.name;
